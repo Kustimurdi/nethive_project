@@ -14,7 +14,11 @@ parsed_args = parse_args(ARGS, s)
 println(parsed_args)
 
 include("definitions.jl")
-include("methods.jl")
-run()
+#include("methods.jl")
+include("testing.jl")
+#run()
+#run2()
+run3()
+println("wtf")
 
 @info string("DONE!")
