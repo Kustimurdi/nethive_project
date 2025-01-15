@@ -7,15 +7,21 @@ print(string("Current working dir: ", pwd(), "\n"))
 -------------------------------------------------------------------
 """
 
-include("config.jl")
+include("config/defaults.jl")
+include("config/defaults.jl")
+include("config/constants.jl")
 include("helper.jl")
 @show ARGS
-parsed_args = parse_args(ARGS, s)
-println(parsed_args)
+
+
+"""
+-------------------------------------------------------------------
+2. part - setup of the simulation and run 
+-------------------------------------------------------------------
+"""
 
 include("definitions.jl")
 #include("methods.jl")
-include("testing.jl")
 #run()
 #run2()
 run3()

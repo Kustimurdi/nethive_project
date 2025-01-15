@@ -6,6 +6,14 @@ using MLDatasets: MNIST
 using Statistics: mean
 using Random
 
+
+struct Config_Fnn
+    input_size::UInt16
+    hidden_size::Array{UInt16}
+    ouput_size::UInt16
+    activation::Function
+end
+
 function build_fnn(config::Config_Fnn)
     layers = []
     in_size = config.input_size
