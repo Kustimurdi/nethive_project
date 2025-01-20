@@ -5,7 +5,7 @@ which the simulation will operate) and all the necessary functions for the struc
 
 module Definitions
 
-include("config/defaults.jl")
+#include("config/defaults.jl")
 using .Defaults
 using Flux 
 
@@ -20,19 +20,24 @@ mutable struct Bee
     id::Integer
     brain::Flux.Chain
     loss_history::Array{Float32}
-    #interaction_partner_history::Vector{Int}
+    accuracy_history::Array{Float32}
+    params_history::Dict{Int, Any}
     function Bee(id::Integer, 
-                 n_epochs::UInt16 = Defaults.DEFAULT_N_EPOCHS, 
+                 n_epochs::UInt16 = Defaults.DEFAULTS[:N_EPOCHS], 
                  brain_constructor::Function = build_brain,
-                 input_size::AbstractVector{<:Integer} = Defaults.DEFAULT_INPUT_SIZE,
-                 output_size::UInt16 = Defaults.DEFAULT_OUTPUT_SIZE)
+                 input_size::AbstractVector{<:Integer} = Defaults.DEFAULTS[:INPUT_SIZE],
+                 output_size::UInt16 = Defaults.DEFAULTS[:OUTPUT_SIZE])
         
-        brain = brain_constructor(input_size, output_size)
+        brain_model = brain_constructor(input_size, output_size)
+        params_dict = Dict{Int, Any}()
+        params_dict[0] = deepcopy(Flux.params(brain_model))
 
         new(id,
-        brain,
-        zeros(Float32, n_epochs))
-        #zeros(Int8, N_EPOCHS)
+        brain_model,
+        zeros(Float32, n_epochs),
+        zeros(Float32, n_epochs),
+        params_dict)
+        
     end
 end
 
@@ -43,12 +48,12 @@ The struct Hive is the main object on which the simulation is performed. It hold
 mutable struct Hive
     n_bees::UInt16
     bee_list::Vector{Bee}
-    function Hive(n_bees::UInt16 = Defaults.DEFAULT_N_BEES, 
-                  n_epochs::UInt16 = Defaults.DEFAULT_N_EPOCHS, 
+    function Hive(n_bees::UInt16 = Defaults.DEFAULTS[:N_BEES], 
+                  n_epochs::UInt16 = Defaults.DEFAULTS[:N_EPOCHS], 
                   #brain_constructor::Function = build_brain(input_size::AbstractVector{<:Integer}, output_size::UInt16)) #can use const global for default values later
                   brain_constructor::Function = build_brain,
-                  input_size::AbstractVector{<:Integer} = Defaults.DEFAULT_INPUT_SIZE,
-                  output_size::UInt16 = Defaults.DEFAULT_OUTPUT_SIZE)
+                  input_size::AbstractVector{<:Integer} = Defaults.DEFAULTS[:INPUT_SIZE],
+                  output_size::UInt16 = Defaults.DEFAULTS[:OUTPUT_SIZE])
 
         bee_list = Vector{Bee}(undef, n_bees)
         for i = 1:n_bees

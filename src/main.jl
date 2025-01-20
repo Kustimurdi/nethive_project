@@ -8,7 +8,7 @@ print(string("Current working dir: ", pwd(), "\n"))
 """
 
 include("config/defaults.jl")
-include("config/defaults.jl")
+include("config/arg_table.jl")
 include("config/constants.jl")
 include("helper.jl")
 @show ARGS
@@ -21,6 +21,7 @@ include("helper.jl")
 """
 
 include("definitions.jl")
+include("methods.jl")
 #include("methods.jl")
 #run()
 #run2()

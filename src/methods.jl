@@ -1,4 +1,9 @@
-using Flux, MLDatasets
+module Methods
+
+using Flux, MLDatasets, BSON
+using .Definitions
+
+export prepare_MNIST, calc_accuracy, run_simulation, export_bee_data, export_hive_data, train_bee!
 
 """
 the function @prepare_MNIST loads the MNIST dataset from the @MLDatasets package and returns it in an array 
@@ -29,14 +34,37 @@ function prepare_MNIST(normalize::Bool=false, use_subset::Bool=true, subset_trai
     return data
 end
 
+function calc_accuracy(model, dataloader, num_batches::Int=typemax(Int))
+    correct = 0
+    total = 0
+    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
+        preds = onecold(model(x_batch), 0:9)  # Get predicted labels
+        truths = onecold(y_batch, 0:9)       # Get true labels
+        correct += sum(preds .== truths)
+        total += length(truths)
+    end
+    return correct / total
+end
+ 
+function train_bee!(bee::Bee, dataloader, loss_fn, optimizer)
+    total_loss = 0.0
+    for (x_batch, y_batch) in dataloader
+        model = bee.brain
+        grads = gradient(()->loss_fn(model(x_batch), y_batch), Flux.params(model))
+        Flux.Optimise.update!(optimizer, Flux.params(model), grads)
+        total_loss += loss_fn(model(x_batch), y_batch)
+    end
+    return total_loss
+end
 
-function run_simulation(h::Hive, n_epochs::UInt8)
+function run_simulation(h::Hive, n_epochs::UInt16)
+    println("bis hierhin")
     learning_rate = Float16(0.01)
     optimizer = Flux.Adam(learning_rate) 
     loss_fn(y_hat, y) = Flux.crossentropy(y_hat, y) 
     data = prepare_MNIST()
     trainloader = Flux.DataLoader((data[1], data[2]), batchsize=128, shuffle=true)
-    #testloader = Flux.DataLoader((data[3], data[4]), batchsize=128)
+    testloader = Flux.DataLoader((data[3], data[4]), batchsize=128)
     
     for epoch = 1:n_epochs
         for bee in h.bee_list
@@ -47,11 +75,29 @@ function run_simulation(h::Hive, n_epochs::UInt8)
                 Flux.Optimise.update!(optimizer, Flux.params(model), grads)
                 epoch_loss += loss_fn(model(x_batch), y_batch)
             end
+            accuracy = calc_accuracy(bee.brain, testloader)
+            bee.accuracy_history[epoch] = accuracy
             bee.loss_history[epoch] = epoch_loss
-            println("Epoch = $epoch : Bee ID = $(bee.id) : Loss = $epoch_loss")
+            bee.params_history[epoch] = deepcopy(Flux.params(bee.brain))
+            println("Epoch = $epoch : Bee ID = $(bee.id) : Loss = $epoch_loss : Accuracy = $accuracy")
         end
     end
     return 0
 end
 
+function export_bee_data(file_path::String, bee::Bee)
+    bee_data_file = joinpath(file_path, "bee_$(bee.id)_data.bson")
+    BSON.@save bee_data_file 
+        params_history=bee.params_history 
+        loss_history=bee.loss_history 
+        accuracy_history=bee.accuracy_history
+end
+
+function export_hive_data(file_path::String, hive::Hive)
+    for bee in hive.bee_list
+        export_bee_data(file_path, bee)
+    end
+end
+
+end
 
