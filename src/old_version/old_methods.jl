@@ -176,3 +176,90 @@ function run3()
     println(size(X_train_raw))
 end
 println("hello world")
+
+
+function import_bee_data(file_path::String, bee::Bee)
+    bee_data_file = joinpath(file_path, "bee_$(bee.id)_data.bson")
+    println("bis hierhin") 
+    if isfile(bee_data_file)
+        BSON.@load bee_data_file begin
+            bee.params_history = get(params_history, :params_history, [])
+            bee.loss_history = get(loss_history, :loss_history, [])
+            bee.accuracy_history = get(accuracy_history, :accuracy_history, [])
+        end
+    else
+        println("Data file for bee $(bee.id) not found.")
+    end
+end
+
+function import_hive_data(file_path::String, hive::Hive)
+    for bee in hive.bee_list
+        import_bee_data(file_path, bee)
+    end
+end
+
+
+function interact_old(interaction_probability_fn::Function = calculate_interaction_probability, h::Hive, epoch::UInt16)
+    accuracy_list = []
+    for bee in h.bee_list
+        push!(accuracy_list, bee.accuracy_history[epoch])
+        bee.interaction_partner_list[epoch] = [0]
+    end
+    for i in 1:h.n_bees
+        accuracy_ratio = accuracy_list[i]/((sum(accuracy_list) - accuracy_list[i])/(h.n_bees - 1))
+        interaction_probability = interaction_probability_fn(accuracy_ratio)
+        if rand() < interaction_probability #bee with bee_id i is interacting
+            interaction_partner = rand(1:h.n_bees)
+            if h.bee_list[i].bee_id != i
+                println("wrong bee")
+            end
+            if h.bee_list[i].interaction_partner_list[epoch] == [0]
+                h.bee_list[i].interaction_partner_list[epoch] = [interaction_partner]
+            end
+            if !(interaction_partner in h.bee_list[i].interaction_partner_list[epoch])
+                push!(h.bee_list[i].interaction_partner_list[epoch]
+
+"""
+the function @choose_partner_extrinsicly calculates the probability of interacting in given @epoch for every @bee in the Hive @h in accordance of the accuracy of the @bee during given epoch.
+The accuracy thus has to be already calculated and stored in the accuracy_history
+The interaction probability is being calculated by looking at the ratio between the accuracy and the sum of all accuracies of the bees
+"""
+function choose_partner_extrinsicly!(h::Hive, epoch::UInt16)
+    epoch_accuracy_sum = sum(h.accuracy_history[:, epoch])
+    for i in 1:h.n_bees
+        if h.bee_list[i].bee_id != i
+            println("for loop index does not equal bee id")
+        end
+        interaction_probability = h.accuracy_history[i, epoch]/epoch_accuracy_sum
+        if rand() < interaction_probability #bee of bee_id i is interacting
+            interaction_partner = rand(1:h.n_bees) #interaction partner is chosen
+            h.interaction_partner_history[i, epoch] = interaction_partner
+        else 
+            h.interaction_partner_history[i, epoch] = 0
+        end
+    end
+    return 0
+end
+
+function export_bee_data(file_path::String, bee::Bee)
+    mkpath(file_path)
+    bee_data_file = joinpath(file_path, "bee_$(bee.id)_data.bson")
+    BSON.@save bee_data_file params_history=bee.params_history loss_history=bee.loss_history accuracy_history=bee.accuracy_history
+end
+
+function export_hive_data(file_path::String, hive::Hive)
+    for bee in hive.bee_list
+        export_bee_data(file_path, bee)
+    end
+end
+
+function import_bson_test(file_path::String, id::Int)
+    bee_data_file = joinpath(file_path, "bee_$(id)_data.bson")
+    if isfile(bee_data_file)
+        BSON.@load bee_data_file params_history
+        println("loss_history: ")
+        println(loss_history)
+    else
+        println("does not exits")
+    end
+end

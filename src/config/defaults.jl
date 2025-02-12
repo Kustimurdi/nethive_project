@@ -1,15 +1,12 @@
-module Defaults
-
 const DEFAULTS = Dict(
     :N_BEES => UInt16(3),
     :N_EPOCHS => UInt16(5),
     :INPUT_SIZE => [UInt16(28), UInt16(28), UInt16(1)],
-    :OUTPUT_SIZE => UInt16(10)
+    :OUTPUT_SIZE => UInt16(10),
+    :PARENT_DATASET_NAME => "default",
+    :LEARNING_RATE => Float16(0.01)
 )
 
-export DEFAULTS
-
-end
 
 """
 export DEFAULT_INPUT_SIZE, DEFAULT_OUTPUT_SIZE, DEFAULT_N_BEES, DEFAULT_N_EPOCHS

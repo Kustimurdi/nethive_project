@@ -2,14 +2,7 @@
 The file @definitions.jl holds the defintions of all of the objects relevant for the simulation (the objects on
 which the simulation will operate) and all the necessary functions for the structs
 """
-
-module Definitions
-
-#include("config/defaults.jl")
-using .Defaults
-using Flux 
-
-export Hive, Bee
+#using Flux 
 
 """
 The struct @Bee represents one of the neural networks in out simulation of multiple neural networks being trained
@@ -19,14 +12,11 @@ The struct @Bee represents one of the neural networks in out simulation of multi
 mutable struct Bee
     id::Integer
     brain::Flux.Chain
-    loss_history::Array{Float32}
-    accuracy_history::Array{Float32}
     params_history::Dict{Int, Any}
     function Bee(id::Integer, 
-                 n_epochs::UInt16 = Defaults.DEFAULTS[:N_EPOCHS], 
                  brain_constructor::Function = build_brain,
-                 input_size::AbstractVector{<:Integer} = Defaults.DEFAULTS[:INPUT_SIZE],
-                 output_size::UInt16 = Defaults.DEFAULTS[:OUTPUT_SIZE])
+                 input_size::AbstractVector{<:Integer} = DEFAULTS[:INPUT_SIZE],
+                 output_size::UInt16 = DEFAULTS[:OUTPUT_SIZE])
         
         brain_model = brain_constructor(input_size, output_size)
         params_dict = Dict{Int, Any}()
@@ -34,10 +24,7 @@ mutable struct Bee
 
         new(id,
         brain_model,
-        zeros(Float32, n_epochs),
-        zeros(Float32, n_epochs),
         params_dict)
-        
     end
 end
 
@@ -48,20 +35,35 @@ The struct Hive is the main object on which the simulation is performed. It hold
 mutable struct Hive
     n_bees::UInt16
     bee_list::Vector{Bee}
-    function Hive(n_bees::UInt16 = Defaults.DEFAULTS[:N_BEES], 
-                  n_epochs::UInt16 = Defaults.DEFAULTS[:N_EPOCHS], 
+    loss_history::Matrix{Float64}
+    accuracy_history::Matrix{Float64}
+    interaction_partner_history::Matrix{Int}
+    interaction_results_history::Matrix{Int}
+    epoch_index::UInt
+    function Hive(n_bees::UInt16 = DEFAULTS[:N_BEES], 
+                  n_epochs::UInt16 = DEFAULTS[:N_EPOCHS], 
                   #brain_constructor::Function = build_brain(input_size::AbstractVector{<:Integer}, output_size::UInt16)) #can use const global for default values later
                   brain_constructor::Function = build_brain,
-                  input_size::AbstractVector{<:Integer} = Defaults.DEFAULTS[:INPUT_SIZE],
-                  output_size::UInt16 = Defaults.DEFAULTS[:OUTPUT_SIZE])
+                  input_size::AbstractVector{<:Integer} = DEFAULTS[:INPUT_SIZE],
+                  output_size::UInt16 = DEFAULTS[:OUTPUT_SIZE])
 
         bee_list = Vector{Bee}(undef, n_bees)
         for i = 1:n_bees
-            bee_list[i] = Bee(UInt16(i), n_epochs::UInt16, brain_constructor, input_size, output_size)
+            bee_list[i] = Bee(UInt16(i), brain_constructor, input_size, output_size)
         end
 
+        losses = fill(-1, n_bees, n_epochs)
+        accuracies = fill(-1, n_bees, n_epochs + 1) #the matrix has one additional column for the initial accuracies
+        interaction_partners = fill(-1, n_bees, n_epochs)
+        interaction_results = fill(-1, n_bees, n_epochs)
+
         new(n_bees::UInt16,
-        bee_list)
+        bee_list,
+        losses,
+        accuracies,
+        interaction_partners,
+        interaction_results,
+        UInt(0))
     end
 end
 
@@ -87,8 +89,6 @@ function build_brain(input_size::AbstractVector{<:Integer}, output_size::UInt16)
     return Chain(layers...)
 end
 
-end
-"""End of the module"""
 
 
 

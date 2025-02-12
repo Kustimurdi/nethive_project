@@ -1,31 +1,26 @@
-module ArgParseTable 
-
-#include("defaults.jl") 
-using .Defaults
 using ArgParse
 
 function create_arg_parse_settings()
     s = ArgParseSettings()
     @add_arg_table s begin
+        "--parent_dataset_name"
+        help = "Name of the folder housing the datasets"
+        arg_type = String
+        default = DEFAULTS[:PARENT_DATASET_NAME]
+        nargs = 'A'
         "--n_bees"
         help = "The number of neural networks in the hive"
         arg_type = UInt16
-        default = Defaults.DEFAULTS[:N_BEES]
+        default = DEFAULTS[:N_BEES]
         nargs = 'A'
         "--n_epochs"
         help = "Number of epochs to train"
         arg_type = UInt16
-        default = Defaults.DEFAULTS[:N_EPOCHS]
+        default = DEFAULTS[:N_EPOCHS]
         nargs = 'A'
-        "--input_size"
-        help = "Size of the input layer of the neural networks of the @Bee objects"
-        arg_type = Array{UInt16}
-        default = Defaults.DEFAULTS[:INPUT_SIZE]
-        nargs = 'A'
-        "--output_size"
-        help = "Size of the ouput layer of the neural networks of the @Bee objects"
-        arg_type = UInt16
-        default = Defaults.DEFAULTS[:OUTPUT_SIZE]
+        "--learning_rate"
+        help = "Learning rate for the update step of the neural networks"
+        default = DEFAULTS[:LEARNING_RATE]
         nargs = 'A'
     end
     
@@ -33,6 +28,15 @@ function create_arg_parse_settings()
 
 end 
 
-export create_arg_parse_settings
-
-end
+"""
+"--input_size"
+help = "Size of the input layer of the neural networks of the @Bee objects"
+arg_type = Array{UInt16}
+default = DEFAULTS[:INPUT_SIZE]
+nargs = 'A'
+"--output_size"
+help = "Size of the ouput layer of the neural networks of the @Bee objects"
+arg_type = UInt16
+default = DEFAULTS[:OUTPUT_SIZE]
+nargs = 'A'
+"""

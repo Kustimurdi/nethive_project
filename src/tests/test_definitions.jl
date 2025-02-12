@@ -3,11 +3,8 @@ using Flux
 include("../definitions.jl")
 include("../config/defaults.jl")
 
-using .Definitions
-using .Defaults
-
 @testset "Test Bee struct" begin
-    bee = Definitions.Bee(1) 
+    bee = Bee(1) 
 
     @test !isnothing(bee) 
     @test bee.id == 1 
@@ -16,7 +13,7 @@ end
 
 
 @testset "Test Hive struct" begin
-    hive = Definitions.Hive()
+    hive = Hive()
     @test !isnothing(hive)
-    @test hive.n_bees == Defaults.DEFAULTS[:N_BEES]
+    @test hive.n_bees == DEFAULTS[:N_BEES]
 end
