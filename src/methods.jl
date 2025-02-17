@@ -68,7 +68,7 @@ function calc_accuracy(model, dataloader, n_labels, num_batches::Int=typemax(Int
     end
     return correct / total
 end
- 
+
 
 
 """
@@ -175,11 +175,10 @@ function save_data(raw_path::String, h::Hive, n_epochs=DEFAULTS[:N_EPOCHS])
     return 0
 end
 
-function run_simulation(h::Hive, n_epochs::UInt16 = DEFAULTS[:N_EPOCHS], data_fn = prepare_MNIST(), n_labels = 10)
+function train_task!(h::Hive, data, n_epochs::UInt16 = DEFAULTS[:N_EPOCHS], n_labels = 10)
     learning_rate = DEFAULTS[:LEARNING_RATE]
     optimizer = Flux.Adam(learning_rate) 
     loss_fn(y_hat, y) = Flux.crossentropy(y_hat, y) 
-    data = data_fn
     trainloader = Flux.DataLoader((data[1], data[2]), batchsize=128, shuffle=true)
     testloader = Flux.DataLoader((data[3], data[4]), batchsize=128)
     for bee in h.bee_list
@@ -212,11 +211,46 @@ end
 
 
 
-
-
 """
+--------------------------------------------------------------------------
 work in progress from here on
 """
+
+"""
+This will be the new version of @train_task! that will take into account that the different tasks will have different dimensions
+"""
+ 
+function learn_task!(h::Hive, data, output_range, n_epochs::UInt16 = DEFAULTS[:N_EPOCHS])
+    learning_rate = DEFAULTS[:LEARNING_RATE]
+    optimizer = Flux.Adam(learning_rate) 
+    loss_fn(y_hat, y) = Flux.crossentropy(y_hat, y) 
+    trainloader = Flux.DataLoader((data[1], data[2]), batchsize=128, shuffle=true)
+    testloader = Flux.DataLoader((data[3], data[4]), batchsize=128)
+    for bee in h.bee_list
+        #initial_accuracy = calc_accuracy(bee.brain, testloader, n_labels)
+        #h.accuracy_history[bee.id, 1] = initial_accuracy
+    end
+    for epoch = 1:n_epochs
+        h.epoch_index += UInt(1)
+        for bee in h.bee_list
+            epoch_loss = 0.0
+            for (x_batch, y_batch) in trainloader
+                model = bee.brain
+                grads = gradient(()->loss_fn(model(x_batch)[output_range[1]:output_range[2]], y_batch), Flux.params(model))
+                Flux.Optimise.update!(optimizer, Flux.params(model), grads)
+                epoch_loss += loss_fn(model(x_batch), y_batch)
+            end
+            h.loss_history[bee.id, epoch] = epoch_loss
+            #accuracy = calc_accuracy(bee.brain, testloader, n_labels)
+            #h.accuracy_history[bee.id, (epoch + 1)] = accuracy
+            bee.params_history[epoch] = deepcopy(Flux.params(bee.brain))
+            println("Epoch = $epoch : Bee ID = $(bee.id) : Loss = $epoch_loss : Accuracy = $accuracy")
+        end
+    end
+    #save_data(RAW_PATH, h, n_epochs)
+    return 0
+end
+
 
 
 
@@ -226,13 +260,31 @@ This function trains one individual bee.
 At the moment the function is obsolete since the training already takes place in the run_simulation function
 In case there will be some form of interaction between the bees during the training process this function will be used
 """
-function train_bee!(bee::Bee, dataloader, loss_fn, optimizer)
+function train_bee!(bee::Bee, dataloader, loss_fn, optimizer, output_range)
     total_loss = 0.0
     for (x_batch, y_batch) in dataloader
         model = bee.brain
-        grads = gradient(()->loss_fn(model(x_batch), y_batch), Flux.params(model))
+        grads = gradient(()->loss_fn(model(x_batch)[output_range[1], output_range[2]], y_batch), Flux.params(model))
         Flux.Optimise.update!(optimizer, Flux.params(model), grads)
         total_loss += loss_fn(model(x_batch), y_batch)
     end
     return total_loss
+end
+
+function calc_task_accuracy(model, dataloader, output_range, num_batches::Int=typemax(Int))
+    correct = 0
+    total = 0
+    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
+        preds = Flux.onecold(model(x_batch)[output_range[1]:output_range[2]], 0:(output_range[2] - output_range[1]))  # Get predicted labels
+        truths = Flux.onecold(y_batch, 0:n_labels - 1)       # Get true labels
+        correct += sum(preds .== truths)
+        total += length(truths)
+    end
+    return correct / total
+end
+
+function run()
+    h = Hive(N_BEES, N_EPOCHS)
+    data_full_mnist = prepare_MNIST(false, false) #the dataset is not normalized to 1
+    #train_task!()
 end

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 
-sbatch ./run_sbatch.sh --n_bees=1 --n_epochs=1 --parent_dataset_name="system_check_MNIST"
+sbatch ./run_sbatch.sh --n_bees=3 --n_epochs=30 --parent_dataset_name="small_run_for_visualization"

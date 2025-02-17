@@ -43,9 +43,9 @@ mutable struct Hive
     function Hive(n_bees::UInt16 = DEFAULTS[:N_BEES], 
                   n_epochs::UInt16 = DEFAULTS[:N_EPOCHS], 
                   #brain_constructor::Function = build_brain(input_size::AbstractVector{<:Integer}, output_size::UInt16)) #can use const global for default values later
-                  brain_constructor::Function = build_brain,
                   input_size::AbstractVector{<:Integer} = DEFAULTS[:INPUT_SIZE],
-                  output_size::UInt16 = DEFAULTS[:OUTPUT_SIZE])
+                  output_size::UInt16 = DEFAULTS[:OUTPUT_SIZE],
+                  brain_constructor::Function = build_brain)
 
         bee_list = Vector{Bee}(undef, n_bees)
         for i = 1:n_bees

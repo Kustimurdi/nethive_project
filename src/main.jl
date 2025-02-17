@@ -32,7 +32,7 @@ println("Setup complete")
 include("definitions.jl")
 include("methods.jl")
 h = Hive(N_BEES, N_EPOCHS)
-data_mnist = prepare_MNIST(false, false)
+data_mnist = prepare_MNIST(false)
 train_task!(h, data_mnist, N_EPOCHS)
 
 @info string("DONE!")

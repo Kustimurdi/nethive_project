@@ -18,7 +18,7 @@ loss_fn(y_hat, y) = Flux.crossentropy(y_hat, y)
 data = prepare_MNIST()
 trainloader = Flux.DataLoader((data[1], data[2]), batchsize=128, shuffle=true)
 testloader = Flux.DataLoader((data[3], data[4]), batchsize=128)
-run_simulation(h1, UInt16(3), prepare_CIFAR10(), 10)
+train_task!(h1, UInt16(3), prepare_CIFAR10(), 10)
 #save_data(RAW_PATH, h1)
 ##
 
@@ -46,4 +46,10 @@ end
 
 ##
 h3 = Hive(UInt16(10), UInt16(10))
+run_simulation(h3, UInt16(10))
+save_data(RAW_PATH, h3, UInt16(10))
 
+## testing if the neural network learns if the output dimension is bigger than that of the labels
+h_def = Hive(N_BEES, N_EPOCHS, DEFAULTS[:INPUT_SIZE], UInt16(20))
+data_mnist = prepare_MNIST()
+learn_task!(h_def, data_mnist, MAPPING_OUPUT_RANGE[:MNIST])

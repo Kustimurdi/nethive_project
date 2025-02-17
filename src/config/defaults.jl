@@ -7,6 +7,10 @@ const DEFAULTS = Dict(
     :LEARNING_RATE => Float16(0.01)
 )
 
+const MAPPING_OUPUT_RANGE = Dict(
+    :MNIST => (1, 10),
+    :CIFAR10 => (11, 20)
+)
 
 """
 export DEFAULT_INPUT_SIZE, DEFAULT_OUTPUT_SIZE, DEFAULT_N_BEES, DEFAULT_N_EPOCHS
