@@ -5,9 +5,9 @@ library(bektas.utils.r)
 
 source("./methods.R")
 
-data_path <- "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/default/D250210T201831023I2/"
+data_path <- "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/training_neural_network_model_4/D250227T170512747I2"
 
-accuracy_data <- read.csv(paste(data_path, "accuracy_history_epoch_3.csv", sep=''))
+accuracy_data <- read.csv(paste(data_path, "accuracy_history.csv", sep=''))
 
 print(accuracy_data)
 

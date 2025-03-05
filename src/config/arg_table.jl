@@ -18,9 +18,20 @@ function create_arg_parse_settings()
         arg_type = UInt16
         default = DEFAULTS[:N_EPOCHS]
         nargs = 'A'
+        "--n_steps_per_epoch"
+        help = "Number of actions every neural network will take on average in one epoch"
+        arg_type = UInt16
+        default = DEFAULTS[:N_STEPS_PER_EPOCH]
+        nargs = 'A'
         "--learning_rate"
         help = "Learning rate for the update step of the neural networks"
+        arg_type = Float16
         default = DEFAULTS[:LEARNING_RATE]
+        nargs = 'A'
+        "--random_seed"
+        help = "The integer to set the seed for Random.seed!()"
+        arg_type = Int
+        default = DEFAULTS[:RANDOM_SEED]
         nargs = 'A'
     end
     

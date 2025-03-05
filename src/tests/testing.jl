@@ -1,5 +1,9 @@
+empty!(DEPOT_PATH)  # Clear the current path
+push!(DEPOT_PATH, "/scratch/n/N.Pfaffenzeller/.julia")
+
 using Pkg
 Pkg.activate("./env_nethive/")
+Pkg.precompile()
 using Test
 
 include("../helper.jl")
@@ -11,11 +15,3 @@ include("../definitions.jl")
 include("../methods.jl")
 
 using Images
-
-## MLDatasets testing
-x_fashion, y_fashion = MLDatasets.FashionMNIST(:train)[:]
-
-index = 3
-img = x_fashion[:, :, index]
-
-colorview(Gray, img')

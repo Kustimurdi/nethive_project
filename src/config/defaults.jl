@@ -1,10 +1,14 @@
 const DEFAULTS = Dict(
-    :N_BEES => UInt16(3),
-    :N_EPOCHS => UInt16(5),
-    :INPUT_SIZE => [UInt16(28), UInt16(28), UInt16(1)],
+    :INPUT_SIZE => [UInt16(32), UInt16(32), UInt16(1)],
     :OUTPUT_SIZE => UInt16(10),
     :PARENT_DATASET_NAME => "default",
-    :LEARNING_RATE => Float16(0.01)
+    :N_BEES => UInt16(3),
+    :N_EPOCHS => UInt16(2),
+    :N_STEPS_PER_EPOCH => 50,
+    :LEARNING_RATE => Float16(0.0001),
+    :LAMBDA_TRAIN => Float16(0.5),
+    :LAMBDA_INTERACT => Float16(5),
+    :RANDOM_SEED => 1
 )
 
 const MAPPING_OUPUT_RANGE = Dict(

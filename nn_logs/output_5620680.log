@@ -1,0 +1,29 @@
+Mon Mar  3 12:52:18 PM CET 2025
+/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/training
+--n_bees=1 --n_epochs=20 --parent_dataset_name=training_neural_network_model_4 --learning_rate=0.0001
+  Activating project at `/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/env_nethive`
+Current working dir: /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/training
+ARGS = ["--n_bees=1", "--n_epochs=20", "--parent_dataset_name=training_neural_network_model_4", "--learning_rate=0.0001"]
+Data path: /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/training_neural_network_model_4/D250303T125238915I2
+1
+1×6 DataFrame
+ Row │ learning_rate  n_bees  n_epochs  n_steps_per_epoch  parent_dataset_name              random_seed
+     │ Float16        UInt16  UInt16    UInt16             String                           Int64
+─────┼──────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │        0.0001       1        20                 50  training_neural_network_model_4            1
+ERROR: LoadError: Value 11 not found in labels
+Stacktrace:
+ [1] error(s::String)
+   @ Base ./error.jl:35
+ [2] onehotbatch(data::Vector{Int64}, labels::UnitRange{Int64})
+   @ OneHotArrays /scratch/n/N.Pfaffenzeller/.julia/packages/OneHotArrays/n10pv/src/onehot.jl:106
+ [3] prepare_svhn2_dataset_greyscale(split::Symbol; subset::Nothing)
+   @ Main /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/src/methods.jl:77
+ [4] prepare_svhn2_dataset_greyscale
+   @ /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/src/methods.jl:67 [inlined]
+ [5] run_training(model::Chain{Tuple{Conv{2, 4, typeof(relu), Array{Float32, 4}, Vector{Float32}}, BatchNorm{typeof(identity), Vector{Float32}, Float32, Vector{Float32}}, Dropout{Float64, Colon, TaskLocalRNG}, Conv{2, 4, typeof(relu), Array{Float32, 4}, Vector{Float32}}, BatchNorm{typeof(identity), Vector{Float32}, Float32, Vector{Float32}}, MaxPool{2, 4}, Conv{2, 4, typeof(relu), Array{Float32, 4}, Vector{Float32}}, BatchNorm{typeof(identity), Vector{Float32}, Float32, Vector{Float32}}, Dropout{Float64, Colon, TaskLocalRNG}, Conv{2, 4, typeof(relu), Array{Float32, 4}, Vector{Float32}}, BatchNorm{typeof(identity), Vector{Float32}, Float32, Vector{Float32}}, MaxPool{2, 4}, Conv{2, 4, typeof(relu), Array{Float32, 4}, Vector{Float32}}, BatchNorm{typeof(identity), Vector{Float32}, Float32, Vector{Float32}}, Dropout{Float64, Colon, TaskLocalRNG}, Conv{2, 4, typeof(relu), Array{Float32, 4}, Vector{Float32}}, BatchNorm{typeof(identity), Vector{Float32}, Float32, Vector{Float32}}, MaxPool{2, 4}, typeof(Flux.flatten), Dense{typeof(relu), Matrix{Float32}, Vector{Float32}}, Dropout{Float64, Colon, TaskLocalRNG}, Dense{typeof(relu), Matrix{Float32}, Vector{Float32}}, Dropout{Float64, Colon, TaskLocalRNG}, Dense{typeof(identity), Matrix{Float32}, Vector{Float32}}}}; dataset_function::typeof(prepare_svhn2_dataset_greyscale))
+   @ Main /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/src/methods.jl:241
+ [6] top-level scope
+   @ /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/training/training.jl:36
+in expression starting at /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/training/training.jl:36
+Mon Mar  3 12:53:08 PM CET 2025

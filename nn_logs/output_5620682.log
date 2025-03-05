@@ -1,0 +1,157 @@
+Mon Mar  3 12:52:54 PM CET 2025
+/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/training
+--n_bees=1 --n_epochs=20 --parent_dataset_name=training_neural_network_model_4 --learning_rate=0.0001
+  Activating project at `/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/env_nethive`
+Current working dir: /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/training
+ARGS = ["--n_bees=1", "--n_epochs=20", "--parent_dataset_name=training_neural_network_model_4", "--learning_rate=0.0001"]
+Data path: /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/training_neural_network_model_4/D250303T125333971I3
+1
+1×6 DataFrame
+ Row │ learning_rate  n_bees  n_epochs  n_steps_per_epoch  parent_dataset_name              random_seed
+     │ Float16        UInt16  UInt16    UInt16             String                           Int64
+─────┼──────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │        0.0001       1        20                 50  training_neural_network_model_4            1
+[ Info: Starting epoch 1
+┌ Info: Epoch 1 completed
+│   epoch = 1
+│   time = 284.6007070541382
+│   loss = 2.05834407516634
+└   accuracy = 0.3931
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 2
+┌ Info: Epoch 2 completed
+│   epoch = 2
+│   time = 241.4964210987091
+│   loss = 1.1672142160726762
+└   accuracy = 0.7923
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 3
+┌ Info: Epoch 3 completed
+│   epoch = 3
+│   time = 251.05891108512878
+│   loss = 0.4762800337472704
+└   accuracy = 0.9162
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 4
+┌ Info: Epoch 4 completed
+│   epoch = 4
+│   time = 245.5067059993744
+│   loss = 0.26981908780361796
+└   accuracy = 0.9409
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 5
+┌ Info: Epoch 5 completed
+│   epoch = 5
+│   time = 247.89319896697998
+│   loss = 0.20108090243391644
+└   accuracy = 0.9597
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 6
+┌ Info: Epoch 6 completed
+│   epoch = 6
+│   time = 241.77807998657227
+│   loss = 0.15358714134827542
+└   accuracy = 0.9647
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 7
+┌ Info: Epoch 7 completed
+│   epoch = 7
+│   time = 244.55163502693176
+│   loss = 0.12893397694151762
+└   accuracy = 0.9727
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 8
+┌ Info: Epoch 8 completed
+│   epoch = 8
+│   time = 249.51870012283325
+│   loss = 0.10570728766502563
+└   accuracy = 0.9774
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 9
+┌ Info: Epoch 9 completed
+│   epoch = 9
+│   time = 240.8658230304718
+│   loss = 0.09081431189829957
+└   accuracy = 0.9755
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 10
+┌ Info: Epoch 10 completed
+│   epoch = 10
+│   time = 251.70638799667358
+│   loss = 0.08403745791547175
+└   accuracy = 0.982
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 11
+┌ Info: Epoch 11 completed
+│   epoch = 11
+│   time = 242.17366695404053
+│   loss = 0.0771394821478606
+└   accuracy = 0.9823
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 12
+┌ Info: Epoch 12 completed
+│   epoch = 12
+│   time = 241.04629802703857
+│   loss = 0.07007605782230951
+└   accuracy = 0.9838
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 13
+┌ Info: Epoch 13 completed
+│   epoch = 13
+│   time = 252.16831302642822
+│   loss = 0.06702206110574806
+└   accuracy = 0.9835
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 14
+┌ Info: Epoch 14 completed
+│   epoch = 14
+│   time = 240.97873497009277
+│   loss = 0.06084072079958403
+└   accuracy = 0.9847
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 15
+┌ Info: Epoch 15 completed
+│   epoch = 15
+│   time = 246.75656604766846
+│   loss = 0.0593913576577101
+└   accuracy = 0.9871
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 16
+┌ Info: Epoch 16 completed
+│   epoch = 16
+│   time = 246.21205401420593
+│   loss = 0.05595716987632891
+└   accuracy = 0.9875
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 17
+┌ Info: Epoch 17 completed
+│   epoch = 17
+│   time = 242.4722671508789
+│   loss = 0.05239434413511856
+└   accuracy = 0.9883
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 18
+┌ Info: Epoch 18 completed
+│   epoch = 18
+│   time = 245.71441197395325
+│   loss = 0.05033979323994952
+└   accuracy = 0.9891
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 19
+┌ Info: Epoch 19 completed
+│   epoch = 19
+│   time = 244.97806406021118
+│   loss = 0.046437860810976554
+└   accuracy = 0.9894
+[ Info: Memory usage 66687205376 bytes
+[ Info: Starting epoch 20
+┌ Info: Epoch 20 completed
+│   epoch = 20
+│   time = 246.60688710212708
+│   loss = 0.04442501790073292
+└   accuracy = 0.9896
+[ Info: Memory usage 66687205376 bytes
+[ Info: Done. Total elapsed time is 4948.083833694458
+[ Info: Path for saving data: /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/training_neural_network_model_4/test_mnist_learning_rate_0.0001D250303T125342091I1
+[ Info: DONE!
+Mon Mar  3 02:16:18 PM CET 2025

@@ -6,7 +6,7 @@ library(ggplot2)
 
 source("./methods.R")
 
-data_path <- "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/default/D250210T201831023I2/"
+data_path <- "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/default/D250213T175611714I4"
 
 accuracy_data <- read.csv(paste(data_path, "accuracy_history_epoch_3.csv"))
 
@@ -16,12 +16,9 @@ print(accuracy_data)
 print("geeks")
 
 
-
-"""
------------------------------------------------------------------------------
 args <- commandArgs(trailingOnly = TRUE)
 
-default_dataset_name <- "D250210T173114226I2"
+default_dataset_name <- "D250213T175611714I4"
 default_parent_dataset_name <- "default"
 
 DATASET_NAME <- ifelse("--dataset" %in% args, args[which(args == "--dataset")+1], default_dataset_name)
@@ -54,4 +51,3 @@ gg <- ggplot(data=mtcars, aes(x=mpg, y=wt)) +
         y = "Weight") +
     theme_minimal()
 
-"""

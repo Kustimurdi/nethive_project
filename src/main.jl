@@ -21,7 +21,6 @@ include("config/constants.jl")
 @show ARGS
 save_params(parsed_args, RAW_PATH)
 
-println("Setup complete")
 
 """
 -------------------------------------------------------------------
@@ -31,16 +30,25 @@ println("Setup complete")
 
 include("definitions.jl")
 include("methods.jl")
-h = Hive(N_BEES, N_EPOCHS)
-data_mnist = prepare_MNIST(false)
-train_task!(h, data_mnist, N_EPOCHS)
 
+run_gillespie(n_epochs=N_EPOCHS, n_steps_per_epoch=N_STEPS_PER_EPOCH)
 @info string("DONE!")
 
 
 
 """
 TODO:
+- test the neural networks
+- test the gillespie only with the neural networks learning DONE
+- implement the rest of gillespie
+
+
 - implement R code to load data and create plots for the individual bees and the average over the bees
 - implement second training loop and adjust accurcies
+
+
+- look at the ratio between the two propensities over time and adjust lambda_train accordingly
+- adjust the @info messages
+
+- propensity ratio has to be saved!!
 """
