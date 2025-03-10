@@ -19,5 +19,5 @@ const RAW_PATH::String = string("/scratch/n/N.Pfaffenzeller/nikolas_nethive/neth
 const RAW_NET_PATH::String = string("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/", PARENT_DATASET_NAME, "/", DATASET_NAME, "/net/")
 
 
-const GIT_COMMIT::String = "1c1e65fbec30edd4338ff35baa19505728cccfef"
+const GIT_COMMIT::String = "88a0d8f8febd806081b5429a22f91a65aa7dc52b"
 const GIT_BRANCH::String = "Main"

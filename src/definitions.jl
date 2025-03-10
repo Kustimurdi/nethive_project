@@ -46,10 +46,9 @@ mutable struct Hive
     epoch_index::UInt
     function Hive(n_bees::UInt16 = DEFAULTS[:N_BEES], 
                   n_epochs::UInt16 = DEFAULTS[:N_EPOCHS]; 
-                  #brain_constructor::Function = build_brain(input_size::AbstractVector{<:Integer}, output_size::UInt16)) #can use const global for default values later
                   input_size::AbstractVector{<:Integer} = DEFAULTS[:INPUT_SIZE],
                   output_size::UInt16 = DEFAULTS[:OUTPUT_SIZE],
-                  brain_constructor::Function = build_model_4)
+                  brain_constructor::Function = build_model_sin_adaptive)
 
         bee_list = Vector{Bee}(undef, n_bees)
         for i = 1:n_bees
@@ -130,14 +129,70 @@ function build_model_5(; input_size::AbstractVector{<:Integer}=DEFAULTS[:INPUT_S
     )
 end
 
+function build_model_sin()
+    return Chain(
+        Dense(1, 16, relu),
+        Dense(16, 16, relu),
+        Dense(16, 1)
+    )
+end
 
 
+mutable struct Bee_fixed_dims
+    id::Integer
+    brain::Flux.Chain
+    current_accuracy::Float32
+    params_history::Dict{Int, Any}
+    function Bee_fixed_dims(id::Integer, brain_constructor::Function = build_model_sin)
+        
+        brain_model = brain_constructor()
+        params_dict = Dict{Int, Any}()
+        params_dict[0] = deepcopy(Flux.params(brain_model))
 
+        new(id,
+        brain_model,
+        Float32(0),
+        params_dict)
+    end
+end
 
+mutable struct Hive_fixed_dims
+    n_bees::UInt16
+    bee_list::Vector{Bee_fixed_dims}
+    current_accuracies_list::Vector{Float64}
+    initial_accuracies_list::Vector{Float64}
+    loss_history::Matrix{Float64}
+    accuracy_history::Matrix{Float64}
+    n_subdom_interactions_history::Matrix{Int}
+    n_dom_interactions_history::Matrix{Int}
+    propensity_ratio_history::Vector{Float64}
+    epoch_index::UInt
+    function Hive_fixed_dims(n_bees::UInt16 = DEFAULTS[:N_BEES], 
+                  n_epochs::UInt16 = DEFAULTS[:N_EPOCHS]; 
+                  brain_constructor::Function = build_model_sin)
 
+        bee_list = Vector{Bee_fixed_dims}(undef, n_bees)
+        for i = 1:n_bees
+            bee_list[i] = Bee_fixed_dims(UInt16(i), brain_constructor)
+        end
 
+        current_accuracies = fill(-1, n_bees)
+        initial_accuracies = fill(-1, n_bees)
+        losses = fill(0, n_bees, n_epochs)
+        accuracies = fill(-1, n_bees, n_epochs)
+        n_subdom_interactions = fill(0, n_bees, n_epochs)
+        n_dom_interactions = fill(0, n_bees, n_epochs)
+        propensity_ratios = fill(-1, n_epochs)
 
-
-
-
-
+        new(n_bees::UInt16,
+        bee_list,
+        current_accuracies,
+        initial_accuracies,
+        losses,
+        accuracies,
+        n_subdom_interactions,
+        n_dom_interactions,
+        propensity_ratios,
+        UInt(0))
+    end
+end

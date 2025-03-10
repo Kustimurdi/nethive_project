@@ -18,4 +18,4 @@ end
     @test hive.n_bees == DEFAULTS[:N_BEES]
 end
 
-hive2 = Hive(brain_constructor=build_cifar10_model_small)
+hive2 = Hive(brain_constructor=build_model_4)

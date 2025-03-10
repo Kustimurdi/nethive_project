@@ -1,4 +1,5 @@
 using Revise
+using Plots
 using LinearAlgebra
 using Random
 using ArgParse

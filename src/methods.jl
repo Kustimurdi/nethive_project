@@ -100,14 +100,32 @@ function calc_accuracy(model, dataloader; num_batches::Int=typemax(Int))
     return correct / total
 end
 
+function calc_regression_accuracy(model, dataloader; atol=0.005, num_batches::Int=typemax(Int))
+    correct = 0
+    total = 0
+    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
+        preds = model(x_batch)
+        truths = y_batch       # Get true labels
+        result = isapprox.(vec(preds), vec(truths), atol=atol)
+
+        num_true = count(result)
+        num_false = count(!, result)
+
+        correct += num_true
+        total += length(truths)
+    end
+    return correct / total
+end
+
+
 function save_data(raw_path::String, h::Hive, n_epochs=DEFAULTS[:N_EPOCHS])
     mkpath(raw_path)
     #epoch_ids = collect(1:h.epoch_index)
     epoch_ids = collect(1:n_epochs)
     #accuracies_epoch_ids = collect(0:n_epochs)
     export_data(string(raw_path, "/loss_history", ".csv"), h.loss_history, h.n_bees, epoch_ids, "loss")
-    export_data(string(raw_path, "/n_subdom_interactions_history", ".csv"), h.n_subdom_interactions_history, h.n_bees, epoch_ids, "n_subdominant_interactions")
-    export_data(string(raw_path, "/n_dom_interactions_history", ".csv"), h.n_subdom_interactions_history, h.n_bees, epoch_ids, "n_dominant_interactions")
+    export_data(string(raw_path, "/subdom_interactions_history", ".csv"), h.n_subdom_interactions_history, h.n_bees, epoch_ids, "n_subdominant_interactions")
+    export_data(string(raw_path, "/dom_interactions_history", ".csv"), h.n_dom_interactions_history, h.n_bees, epoch_ids, "n_dominant_interactions")
     export_data(string(raw_path, "/accuracy_history", ".csv"), h.accuracy_history, h.n_bees, epoch_ids, "accuracy")
     return 0
 end
@@ -134,7 +152,7 @@ function compute_K_matrix(current_accuracies_list; lambda_Interact=DEFAULTS[LAMB
 end
 
 function K_func(r_i, r_j, lambda) 
-    return r_i*r_j*(1-Flux.sigmoid(-lambda*(r_i - r_j)))
+    return r_i*r_j*Flux.sigmoid(-lambda*(r_i - r_j))
 end
 
 function gillespie_train_task_with_epochs!(h::Hive; trainloader, testloader, n_epochs=DEFAULTS[:N_EPOCHS], lambda_Train=DEFAULTS[:LAMBDA_TRAIN], lambda_Interact=DEFAULTS[:LAMBDA_INTERACT], n_steps_per_epoch=DEFAULTS[:N_STEPS_PER_EPOCH])
@@ -152,11 +170,9 @@ function gillespie_train_task_with_epochs!(h::Hive; trainloader, testloader, n_e
         n_actions = 0
         n_train =0
         n_interact = 0
-        n_dom_higher_acc = 0
-        n_sub_higher_acc = 0
         while gillespie_time < epoch
 
-            epoch_loop_time = time()
+            loop_start_time = time()
             a_train = lambda_Train * h.n_bees #propensity for training the neural networks. All networks (Bees) train with the same rate @lambda_Train
             K_matrix = compute_K_matrix(h.current_accuracies_list, lambda_Interact=lambda_Interact)
             a_interact = sum(K_matrix)
@@ -165,13 +181,13 @@ function gillespie_train_task_with_epochs!(h::Hive; trainloader, testloader, n_e
 
             d_t = rand(Exponential(1 / (n_steps_per_epoch * h.n_bees)))
             gillespie_time += d_t
-            #println("gillespie time: $(gillespie_time)")
+            println("gillespie time: $(gillespie_time)")
 
             choose_action = rand() * total_propensity
             if choose_action < a_train
 
                 selected_bee = h.bee_list[rand(1:h.n_bees)]
-                loss = train_model!(selected_bee.brain, trainloader, learning_rate=DEFAULTS[:LEARNING_RATE])
+                loss = train_regression_model!(selected_bee.brain, trainloader, learning_rate=DEFAULTS[:LEARNING_RATE])
 
                 h.loss_history[selected_bee.id, epoch] += loss
                 current_accuracy = calc_accuracy(selected_bee.brain, testloader)
@@ -187,26 +203,17 @@ function gillespie_train_task_with_epochs!(h::Hive; trainloader, testloader, n_e
                 h.n_subdom_interactions_history[sub_bee.id, epoch] += 1
                 h.n_dom_interactions_history[dom_bee.id, epoch] +=1
 
-                if dom_bee.current_accuracy >= sub_bee.current_accuracy
-                    n_dom_higher_acc+=1
-                else
-                    n_sub_higher_acc+=1
-                end
-
-                println("sub bee is $(sub_bee.id) : current accuracy=$(sub_bee.current_accuracy)")
-                println("dom bee is $(dom_bee.id) : current accuracy=$(dom_bee.current_accuracy)")
-
                 n_interact+=1
                 println("n interact: $(n_interact)")
             end
             n_actions +=1
-            epoch_loop_elapsed_time = time() - epoch_loop_time
+            epoch_loop_elapsed_time = time() - loop_start_time
             @info "Epoch $(epoch) loop $(n_actions) completed" propensity_ratio=(a_train/a_interact) loop_time=epoch_loop_elapsed_time
         end
         h.accuracy_history[:, epoch] = h.current_accuracies_list[:, 1]
         elapsed_time = time() - epoch_start_time
         total_elapsed_time += elapsed_time
-        @info "Epoch $(epoch) completed" epoch=epoch elapsed_time=elapsed_time gillespie_time=gillespie_time average_accuracy=mean(h.current_accuracies_list[:,1]) n_actions=n_actions n_train=n_train n_interact=n_interact
+        @info "Epoch $(epoch) completed" epoch=epoch elapsed_time=elapsed_time gillespie_time=gillespie_time average_accuracy=mean(h.current_accuracies_list[:,1]) n_actions=n_actions n_train=n_train n_interact=n_interact dom_acc_higher=n_dom_higher_acc sub_acc_higher=n_sub_higher_acc
         @info "Memory usage $(Sys.total_memory()) bytes"
         save_nn_state(RAW_NET_PATH, h)
         h.epoch_index+=1
@@ -215,9 +222,6 @@ function gillespie_train_task_with_epochs!(h::Hive; trainloader, testloader, n_e
     @info "Gillespie simulation is over. Data path: $(RAW_PATH)" total_elapsed_time=total_elapsed_time
 end
 
-"""
-muss fertig implimentiert werden
-"""
 function choose_interaction(h::Hive, a_interact, K_matrix)
     choose_interaction = rand() * a_interact
     cumulative_sum = 0
@@ -230,7 +234,6 @@ function choose_interaction(h::Hive, a_interact, K_matrix)
         end 
     end 
 end
-
 
 function train_model!(model, dataloader; learning_rate=DEFAULTS[:LEARNING_RATE])
     loss_fn(x, y) = Flux.logitcrossentropy(model(x), y)
@@ -249,6 +252,21 @@ function train_model!(model, dataloader; learning_rate=DEFAULTS[:LEARNING_RATE])
     return total_batch_loss / n_batches  # Return average loss
 end
 
+function train_regression_model!(model, dataloader; learning_rate=DEFAULTS[:LEARNING_RATE])
+    loss_fn(x, y) = Flux.Losses.mse(model(x), y)
+    optimizer = Flux.Adam(learning_rate)
+    total_batch_loss = 0.0
+    n_batches = 0
+    for (x_batch, y_batch) in dataloader
+        Flux.train!(loss_fn, Flux.params(model), [(x_batch, y_batch)], optimizer)
+
+        total_batch_loss += loss_fn(x_batch, y_batch)
+        n_batches += 1
+    end
+
+    return total_batch_loss / n_batches  # Return average loss
+end
+
 function run_gillespie(; n_epochs=N_EPOCHS, n_steps_per_epoch=DEFAULTS[:N_STEPS_PER_EPOCH], dataset_function=prepare_mnist_dataset_1_channel)
     h = Hive(N_BEES, N_EPOCHS, brain_constructor = build_model_4)
     train_features_mnist_subset, train_labels_mnist_subset = dataset_function(:train)
@@ -257,6 +275,12 @@ function run_gillespie(; n_epochs=N_EPOCHS, n_steps_per_epoch=DEFAULTS[:N_STEPS_
     testloader = Flux.DataLoader((test_features_mnist_subset, test_labels_mnist_subset), batchsize=128, shuffle=true)
     gillespie_train_task_with_epochs!(h, n_epochs=n_epochs, trainloader=trainloader, testloader=testloader, n_steps_per_epoch=n_steps_per_epoch, lambda_Interact=0.0)
 end
+
+"""
+------------------------------------------------------------
+for training and testing neural network architectures
+------------------------------------------------------------
+"""
 
 function train_neural_network(raw_path, model, n_epochs; trainloader, testloader, learning_rate=DEFAULTS[:LEARNING_RATE])
     #@info("Path for saving data: $(data_path)")
@@ -303,3 +327,12 @@ function run_training(model; dataset_function)
     testloader = Flux.DataLoader((x_test, y_test), batchsize=128, shuffle=true)
     train_neural_network(data_path, model, N_EPOCHS, trainloader=trainloader, testloader=testloader, learning_rate=LEARNING_RATE)
 end
+
+function create_sin_dataset(n_peaks, which_peak, setsize::Int)
+    features = rand(setsize) * pi *n_peaks |> x -> reshape(x, 1, :)
+    temp = deepcopy(features)
+    temp[(temp .< (which_peak - 1)*pi) .| (temp .> which_peak*pi)] .= 0
+    labels = abs.(sin.(temp))
+    return features, labels
+end
+    

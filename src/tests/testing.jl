@@ -15,3 +15,8 @@ include("../definitions.jl")
 include("../methods.jl")
 
 using Images
+
+test_model
+println("hallo")
+
+isapprox(pi, 3.14, atol = 0.005)

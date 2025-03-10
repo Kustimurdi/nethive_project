@@ -51,4 +51,8 @@ TODO:
 - adjust the @info messages
 
 - propensity ratio has to be saved!!
+- implement another form of punishment:
+    save old version of NN for all bees
+    when in subdominant interaction -> change weights back to old set of weights
+    problem: what if it gets dominated multiple times after another? if we only save the weights for one previous step, then it cannot be punished anymore after one subdominant interaction
 """

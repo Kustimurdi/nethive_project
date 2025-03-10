@@ -505,3 +505,133 @@ function build_model_3(; input_size::AbstractVector{<:Integer}=DEFAULTS[:INPUT_S
         Dense(256, output_size)  # CIFAR-10 has 10 classes
     )
 end
+
+
+"""
+the function @prepare_MNIST loads the MNIST dataset from the @MLDatasets package and returns it in an array 
+    of the form [x_test, y_test, x_train, y_train].
+    Via @use_subset one can also choose to only use a subset of the MNIST dataset for quick testruns.
+"""
+function prepare_MNIST(normalize::Bool=false, use_subset::Bool=true, subset_train::UInt16=UInt16(6000), subset_test::UInt16=UInt16(1000))
+    x_train_raw, y_train_raw = MLDatasets.MNIST(:train)[:]
+    x_test_raw, y_test_raw = MLDatasets.MNIST(:test)[:]
+    if use_subset == true
+        x_train_raw = x_train_raw[:, :, 1:subset_train]
+        y_train_raw = y_train_raw[1:subset_train]
+        x_test_raw = x_test_raw[:, :, 1:subset_test]
+        y_test_raw = y_test_raw[1:subset_test]
+    end
+    x_train_raw_size = size(x_train_raw)
+    x_test_raw_size = size(x_test_raw)
+    x_train = reshape(x_train_raw, x_train_raw_size[1], size(x_train_raw)[2], 1, size(x_train_raw)[3])
+    x_test = reshape(x_test_raw, x_test_raw_size[1], size(x_test_raw)[2], 1, size(x_test_raw)[3])
+    y_train = Flux.onehotbatch(y_train_raw, 0:9)
+    y_test = Flux.onehotbatch(y_test_raw, 0:9)
+    if normalize == true
+        x_train_raw = x_test_raw ./ 255.0
+        x_test_raw = x_test_raw ./ 255.0
+    end
+    data = [x_train, y_train, x_test, y_test]
+    return data
+end
+
+function prepare_CIFAR10(normalize::Bool=false, use_subset::Bool=true, subset_train::UInt16=UInt16(6000), subset_test::UInt16=UInt16(1000))
+    x_train_raw, y_train_raw = MLDatasets.MNIST(:train)[:]
+    x_test_raw, y_test_raw = MLDatasets.MNIST(:test)[:]
+    data = prepare_data(x_train_raw, y_train_raw, x_test_raw, y_test_raw, 10, normalize, use_subset, subset_train, subset_test)
+    return data
+end
+
+function prepare_data(x_train_raw, y_train_raw, x_test_raw, y_test_raw, n_labels, normalize::Bool=false, use_subset::Bool=true, subset_train::UInt16=UInt16(6000), subset_test::UInt16=UInt16(1000))
+    if use_subset == true
+        x_train_raw = x_train_raw[:, :, 1:subset_train]
+        y_train_raw = y_train_raw[1:subset_train]
+        x_test_raw = x_test_raw[:, :, 1:subset_test]
+        y_test_raw = y_test_raw[1:subset_test]
+    end
+    x_train_raw_size = size(x_train_raw)
+    x_test_raw_size = size(x_test_raw)
+    x_train = reshape(x_train_raw, x_train_raw_size[1], size(x_train_raw)[2], 1, size(x_train_raw)[3])
+    x_test = reshape(x_test_raw, x_test_raw_size[1], size(x_test_raw)[2], 1, size(x_test_raw)[3])
+    y_train = Flux.onehotbatch(y_train_raw, 0:(n_labels - 1))
+    y_test = Flux.onehotbatch(y_test_raw, 0:(n_labels - 1))
+    if normalize == true
+        x_train_raw = x_test_raw ./ 255.0
+        x_test_raw = x_test_raw ./ 255.0
+    end
+    data = [x_train, y_train, x_test, y_test]
+    return data
+end
+
+"""
+the function @calc_accuracy calculates the accuracy of a neural network given by @model by averaging the results of the model on the dataset given in @dataloader
+"""
+function calc_accuracy_labels(model, dataloader; n_labels = 10, num_batches::Int=typemax(Int))
+    correct = 0
+    total = 0
+    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
+        preds = Flux.onecold(model(x_batch), 0:(n_labels - 1))  # Get predicted labels
+        truths = Flux.onecold(y_batch, 0:n_labels - 1)       # Get true labels
+        correct += sum(preds .== truths)
+        total += length(truths)
+    end
+    return correct / total
+end
+
+
+"""
+takes Hive, max_time, lambda_Train and lambda_Interact
+"""
+function gillespie_train_task!(h::Hive, max_time, lambda_Train, lambda_Interact)
+    time = 0.0
+
+    while time < max_time
+        a_train = lambda_Train * h.n_bees #propensity for training the neural networks. All networks (Bees) train with the same rate @lambda_Train
+        a_interact = lambda_Interact * h.n_bees #this is a dummy propensity. normally the rate at which an interaction takes place is dependent on the current accuracies of the networks
+        total_propensity = a_train + a_interact
+        println(total_propensity)
+
+        d_t = -log(rand()) / total_propensity
+        println(d_t)
+        time = time + d_t
+
+        choose_action = rand() * total_propensity
+        if choose_action < a_train
+            selected_bee = h.bee_list[rand(1:h.n_bees)]
+            println("hier wird dann die eine gewählte bee mit id $(selected_bee.id) trainiert")
+        else
+            println("hier würde man durch ene liste an interactions durchgehen, bis die summe dieser raten unsere random chosen variable übersteigt")
+        end
+    end
+end
+
+function train_task!(h::Hive, data, n_epochs::UInt16 = DEFAULTS[:N_EPOCHS])
+    learning_rate = DEFAULTS[:LEARNING_RATE]
+    optimizer = Flux.Adam(learning_rate) 
+    loss_fn(y_hat, y) = Flux.crossentropy(y_hat, y) 
+    trainloader = Flux.DataLoader((data[1], data[2]), batchsize=128, shuffle=true)
+    testloader = Flux.DataLoader((data[3], data[4]), batchsize=128)
+    for bee in h.bee_list
+        initial_accuracy = calc_accuracy(bee.brain, testloader)
+        h.accuracy_history[bee.id, 1] = initial_accuracy
+    end
+    for epoch = 1:n_epochs
+        h.epoch_index += UInt(1)
+        for bee in h.bee_list
+            epoch_loss = 0.0
+            for (x_batch, y_batch) in trainloader
+                model = bee.brain
+                grads = gradient(()->loss_fn(model(x_batch), y_batch), Flux.params(model))
+                Flux.Optimise.update!(optimizer, Flux.params(model), grads)
+                epoch_loss += loss_fn(model(x_batch), y_batch)
+            end
+            h.loss_history[bee.id, epoch] = epoch_loss
+            accuracy = calc_accuracy(bee.brain, testloader)
+            h.accuracy_history[bee.id, (epoch + 1)] = accuracy
+            bee.params_history[epoch] = deepcopy(Flux.params(bee.brain))
+            println("Epoch = $epoch : Bee ID = $(bee.id) : Loss = $epoch_loss : Accuracy = $accuracy")
+        end
+    end
+    save_data(RAW_PATH, h, n_epochs)
+    return 0
+end
