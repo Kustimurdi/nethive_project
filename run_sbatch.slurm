@@ -2,13 +2,14 @@
 #SBATCH --output=../hive_logs/output_%j.log
 #SBATCH --error=../hive_logs/error_%j.log
 #SBATCH --open-mode=append
-#SBATCH --time=18:00:00
+#SBATCH --time=03:00:00
 #SBATCH --mem-per-cpu=6GB
 #SBATCH --cpus-per-task=1
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=ge69mer@mytum.de
 #SBATCH --export=all
 #SBATCH --partition=th-ws
+#SBATCH --export=ALL,DISPLAY=""
 
 date
 echo $PWD

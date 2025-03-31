@@ -12,11 +12,8 @@ include("../config/arg_table.jl")
 include("../config/constants.jl")
 
 include("../definitions.jl")
+include("../prepare_data.jl")
 include("../methods.jl")
 
 using Images
 
-test_model
-println("hallo")
-
-isapprox(pi, 3.14, atol = 0.005)

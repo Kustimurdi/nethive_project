@@ -28,10 +28,30 @@ function create_arg_parse_settings()
         arg_type = Float16
         default = DEFAULTS[:LEARNING_RATE]
         nargs = 'A'
+        "--punish_rate"
+        help = "Prefactor for the negative update step of the dominated neural network"
+        arg_type = Float32
+        default = DEFAULTS[:PUNISH_RATE]
+        nargs = 'A'
         "--random_seed"
         help = "The integer to set the seed for Random.seed!()"
         arg_type = Int
         default = DEFAULTS[:RANDOM_SEED]
+        nargs = 'A'
+        "--lambda_train"
+        help = "The rate at which each individual neural networks will train"
+        arg_type = Float16
+        default = DEFAULTS[:LAMBDA_TRAIN]
+        nargs = 'A'
+        "--lambda_interact"
+        help = "The exponent prefactor of the inverse sigmoid function of the interaction rate"
+        arg_type = Float16
+        default = DEFAULTS[:LAMBDA_INTERACT]
+        nargs = 'A'
+        "--accuracy_atol"
+        help = "The precision of the calculation of the accuracy of the sinus regression task"
+        arg_type = Float16
+        default = DEFAULTS[:ACCURACY_ATOL]
         nargs = 'A'
     end
     

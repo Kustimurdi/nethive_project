@@ -6,15 +6,6 @@ library(ggplot2)
 
 source("./methods.R")
 
-data_path <- "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/default/D250213T175611714I4"
-
-accuracy_data <- read.csv(paste(data_path, "accuracy_history_epoch_3.csv"))
-
-print(accuracy_data)
-
-
-print("geeks")
-
 
 args <- commandArgs(trailingOnly = TRUE)
 

@@ -635,3 +635,13 @@ function train_task!(h::Hive, data, n_epochs::UInt16 = DEFAULTS[:N_EPOCHS])
     save_data(RAW_PATH, h, n_epochs)
     return 0
 end
+
+function run_gillespie(; n_epochs=N_EPOCHS, n_steps_per_epoch=DEFAULTS[:N_STEPS_PER_EPOCH], dataset_function=prepare_mnist_dataset_1_channel)
+    h = Hive(:Val{classification}, N_BEES, N_EPOCHS, brain_constructor = build_model_4)
+    train_features_mnist_subset, train_labels_mnist_subset = dataset_function(:train)
+    test_features_mnist_subset, test_labels_mnist_subset = dataset_function(:test)
+    trainloader = Flux.DataLoader((train_features_mnist_subset, train_labels_mnist_subset), batchsize=128, shuffle=true)
+    testloader = Flux.DataLoader((test_features_mnist_subset, test_labels_mnist_subset), batchsize=128, shuffle=true)
+    gillespie_train_task_with_epochs!(h, n_epochs=n_epochs, trainloader=trainloader, testloader=testloader, n_steps_per_epoch=n_steps_per_epoch, lambda_Interact=0.0)
+    println(h.propensity_ratio_history)
+end

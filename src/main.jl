@@ -4,7 +4,9 @@ exec julia --optimize=3 --threads=4 "${BASH_SOURCE[0]}" "$@"
 =#
 
 import Pkg
+using Pkg
 Pkg.activate("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/env_nethive/")
+Pkg.instantiate()
 
 print(string("Current working dir: ", pwd(), "\n"))
 
@@ -29,9 +31,16 @@ save_params(parsed_args, RAW_PATH)
 """
 
 include("definitions.jl")
+include("prepare_data.jl")
 include("methods.jl")
 
-run_gillespie(n_epochs=N_EPOCHS, n_steps_per_epoch=N_STEPS_PER_EPOCH)
+
+#include("tests/methods_for_testing.jl")
+run_regression_sbatch(10000, 1000)
+#run_straightuptrain(10000, 1000)
+#run_testing_sbatch(10000, 1000)
+
+
 @info string("DONE!")
 
 
@@ -51,8 +60,7 @@ TODO:
 - adjust the @info messages
 
 - propensity ratio has to be saved!!
-- implement another form of punishment:
-    save old version of NN for all bees
-    when in subdominant interaction -> change weights back to old set of weights
-    problem: what if it gets dominated multiple times after another? if we only save the weights for one previous step, then it cannot be punished anymore after one subdominant interaction
+- check learning process, somehow in the gillespie they learn faster than outside although atol is 
+  even lower in gillespie
+- using defaults results in problems sometimes when defining a value manually at points
 """
