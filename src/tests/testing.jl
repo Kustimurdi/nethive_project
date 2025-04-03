@@ -12,7 +12,6 @@ include("../config/arg_table.jl")
 include("../config/constants.jl")
 
 include("../definitions.jl")
-include("../prepare_data.jl")
 include("../methods.jl")
 
 using Images

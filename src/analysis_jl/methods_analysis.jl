@@ -3,9 +3,32 @@
 these functions are for inspection of saved data
 -------------------------------------------------
 """
+function read_parameters(df_parameters)
+    return Dict(df_parameters.id .=> df_parameters.value)  
+end
 
+function read_parameters_from_file(file_path::String)
+    df = CSV.read(file_path, DataFrame)
+    return Dict(df.id .=> df.value)
+end
 
-function plot_hive_history_from_df(df::DataFrame, column=:accuracy; plot_name= "default", which_bee=nothing, title="Hive history", xlabel="Epoch", ylabel="column_value", markersize=4)
+function read_simulation_data(directory::String)
+    files = Dict(
+        "accuracy" => "accuracy_history.csv",
+        "loss" => "loss_history.csv",
+        "queen_gene" => "queen_genes_history.csv",
+        "train_counts" => "train_history.csv",
+        "dominant_counts" => "dominant_history.csv",
+        "subdominant_counts" => "subdominant_history.csv",
+        "parameters" => "parameters.csv"
+    )
+
+    data_dict = Dict(key => CSV.read(joinpath(directory, filename), DataFrame) 
+                                  for (key, filename) in files if isfile(joinpath(directory, filename)))
+    return data_dict
+end
+
+function plot_hive_data(df::DataFrame, column=:accuracy; which_bee=nothing, title="Hive history", xlabel="Epoch", ylabel="column_value", markersize=4)
     fig = Figure()
     ax = Makie.Axis(fig[1, 1], title=title, xlabel=xlabel, ylabel=ylabel)
     
@@ -30,23 +53,7 @@ function plot_hive_history_from_df(df::DataFrame, column=:accuracy; plot_name= "
         push!(labels, "bee_$(bee_id)")
     end
     Legend(fig[1, 2], scatter_plots, labels, "Bees")
-    #Makie.savefig(fig, joinpath("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_images/honeyweb", plot_name))
     return fig
-end
-
-function read_simulation_data(directory::String)
-    files = Dict(
-        "accuracy" => "accuracy_history.csv",
-        "loss" => "loss_history.csv",
-        "train_counts" => "train_history.csv",
-        "dominant_counts" => "dom_interactions_history.csv",
-        "subdominant_counts" => "subdom_interactions_history.csv",
-        "parameters" => "parameters.csv"
-    )
-
-    data_dict = Dict(key => CSV.read(joinpath(directory, filename), DataFrame) 
-                                  for (key, filename) in files if isfile(joinpath(directory, filename)))
-    return data_dict
 end
 
 function compute_dominance_ratio(sim_data)
@@ -58,15 +65,6 @@ function compute_dominance_ratio(sim_data)
         (dominance_ratios_df[:, :n_dominant_interactions] .+ dominance_ratios_df[:, :n_subdominant_interactions])
     select!(dominance_ratios_df, Not([:epoch_index_1]))
     return dominance_ratios_df
-end
-
-function read_parameters(df_parameters)
-    return Dict(df_parameters.id .=> df_parameters.value)  
-end
-
-function read_parameters_from_file(file_path::String)
-    df = CSV.read(file_path, DataFrame)
-    return Dict(df.id .=> df.value)
 end
 
 function compute_ranking(sim_data; num_epochs_avg=5, w1=1.0, w2=1.0, w3=1.0, w4=1.0)

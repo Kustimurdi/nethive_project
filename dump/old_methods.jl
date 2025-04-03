@@ -563,21 +563,6 @@ function prepare_data(x_train_raw, y_train_raw, x_test_raw, y_test_raw, n_labels
     return data
 end
 
-"""
-the function @calc_accuracy calculates the accuracy of a neural network given by @model by averaging the results of the model on the dataset given in @dataloader
-"""
-function calc_accuracy_labels(model, dataloader; n_labels = 10, num_batches::Int=typemax(Int))
-    correct = 0
-    total = 0
-    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
-        preds = Flux.onecold(model(x_batch), 0:(n_labels - 1))  # Get predicted labels
-        truths = Flux.onecold(y_batch, 0:n_labels - 1)       # Get true labels
-        correct += sum(preds .== truths)
-        total += length(truths)
-    end
-    return correct / total
-end
-
 
 """
 takes Hive, max_time, lambda_Train and lambda_Interact
@@ -644,4 +629,228 @@ function run_gillespie(; n_epochs=N_EPOCHS, n_steps_per_epoch=DEFAULTS[:N_STEPS_
     testloader = Flux.DataLoader((test_features_mnist_subset, test_labels_mnist_subset), batchsize=128, shuffle=true)
     gillespie_train_task_with_epochs!(h, n_epochs=n_epochs, trainloader=trainloader, testloader=testloader, n_steps_per_epoch=n_steps_per_epoch, lambda_Interact=0.0)
     println(h.propensity_ratio_history)
+end
+
+function gillespie_regression!(h::Hive; trainloader, testloader, n_epochs=DEFAULTS[:N_EPOCHS], learning_rate=DEFAULTS[:LEARNING_RATE], punish_rate=DEFAULTS[:PUNISH_RATE], acc_atol=DEFAULTS[:ACCURACY_ATOL], lambda_train=DEFAULTS[:LAMBDA_TRAIN], lambda_interact=DEFAULTS[:LAMBDA_INTERACT], n_steps_per_epoch=DEFAULTS[:N_STEPS_PER_EPOCH])
+    total_elapsed_time = 0.0
+    gillespie_time = Float64(0.0)
+    for bee in h.bee_list
+        initial_accuracy = calc_regression_accuracy(bee.brain, testloader, atol=acc_atol)
+        h.initial_accuracies_list[bee.id] = initial_accuracy
+        h.current_accuracies_list[bee.id] = initial_accuracy
+        bee.current_accuracy = initial_accuracy
+    end
+    save_nn_state(RAW_NET_PATH, h)
+    for epoch in 1:n_epochs
+        epoch_start_time = time()
+        @info "Starting epoch $(epoch)"
+        n_actions = 0
+        n_train =0
+        n_interact = 0
+        while gillespie_time < epoch
+
+            loop_start_time = time()
+            a_train = lambda_train * h.n_bees #propensity for training the neural networks. All networks (Bees) train with the same rate @lambda_Train
+            K_matrix = compute_K_matrix(h.current_accuracies_list, lambda_interact=lambda_interact)
+            a_interact = sum(K_matrix)
+
+            total_propensity = a_train + a_interact
+
+            d_t = rand(Exponential(1 / (n_steps_per_epoch * h.n_bees)))
+            gillespie_time += d_t
+
+            choose_action = rand() * total_propensity
+            if choose_action < a_train
+
+                selected_bee = h.bee_list[rand(1:h.n_bees)]
+                loss = train_regression_model!(selected_bee.brain, trainloader, learning_rate=learning_rate)
+
+                h.loss_history[selected_bee.id, epoch] += loss
+                current_accuracy = calc_regression_accuracy(selected_bee.brain, testloader, atol=acc_atol)
+                h.current_accuracies_list[selected_bee.id] = current_accuracy
+                selected_bee.current_accuracy = current_accuracy
+
+                h.n_train_history[selected_bee.id, epoch] += 1
+                n_train +=1
+                println("n train: $(n_train)")
+                println("trained bee = $(selected_bee.id) : current accuracy = $(selected_bee.current_accuracy)")
+            else
+                sub_bee, dom_bee = choose_interaction(h, a_interact, K_matrix)
+
+                punish_regression_model!(sub_bee.brain, trainloader, punish_rate)
+                new_accuracy = calc_regression_accuracy(sub_bee.brain, testloader, atol=acc_atol)
+                println("bee id = $(sub_bee.id) : old acc = $(sub_bee.current_accuracy) : new acc = $(new_accuracy)")
+
+                h. current_accuracies_list[sub_bee.id] = new_accuracy
+                sub_bee.current_accuracy = new_accuracy
+
+                h.n_subdom_interactions_history[sub_bee.id, epoch] += 1
+                h.n_dom_interactions_history[dom_bee.id, epoch] +=1
+
+                n_interact+=1
+                println("n interact: $(n_interact)")
+            end
+            n_actions +=1
+            epoch_loop_elapsed_time = time() - loop_start_time
+            @info "Epoch $(epoch) loop $(n_actions) completed" propensity_ratio=(a_train/a_interact) loop_time=epoch_loop_elapsed_time a_train=a_train a_interact=a_interact
+        end
+        h.epoch_index+=1
+        h.accuracy_history[:, epoch] = h.current_accuracies_list[:, 1]
+        elapsed_time = time() - epoch_start_time
+        total_elapsed_time += elapsed_time
+        @info "Epoch $(epoch) completed" epoch=epoch elapsed_time=elapsed_time gillespie_time=gillespie_time average_accuracy=mean(h.current_accuracies_list[:,1]) n_actions=n_actions n_train=n_train n_interact=n_interact 
+        @info "Memory usage $(Sys.total_memory()) bytes"
+        save_nn_state(RAW_NET_PATH, h)
+    end
+    save_data(RAW_PATH, h, n_epochs)
+    @info "Gillespie simulation is over. Data path: $(RAW_PATH)" total_elapsed_time=total_elapsed_time
+end
+
+
+"""
+The struct Hive is the main object on which the simulation is performed. It holds all @Bee objects meaning all 
+    neural networks allowing to easily perform all simulation operations on it.
+"""
+mutable struct Hive
+    task_type::Task
+    queen_gene_method::QueenGeneMethod
+    n_bees::UInt16
+    bee_list::Vector{Bee}
+    n_epochs::UInt16
+    initial_accuracies_list::Vector{Float64}
+    queen_genes_history::Matrix{Float64}
+    loss_history::Matrix{Float64}
+    accuracy_history::Matrix{Float64}
+    n_train_history::Matrix{Int}
+    n_subdominant_history::Matrix{Int}
+    n_dominant_history::Matrix{Int}
+    propensity_ratio_history::Vector{Float64} #not recorded yet
+    epoch_index::UInt16
+    function Hive(task::Task, queen_gene_method::QueenGeneMethod, n_bees::UInt16, bee_list::Vector{Bee}, n_epochs::UInt16)
+        if n_bees != length(bee_list)
+            throw(ArgumentError("Number of bees does not match the length of the bee list"))
+        end
+        if n_epochs < 1
+            throw(ArgumentError("Number of epochs must be at least 1"))
+        end
+        if n_bees < 1
+            throw(ArgumentError("Number of bees must be at least 1"))
+        end
+        return new(task, 
+                    queen_gene_method,
+                    n_bees,
+                    bee_list,
+                    n_epochs,
+                    fill(0.0, n_bees), #initial accuracies
+                    fill(0.0, n_bees, n_epochs), #queen genes history
+                    fill(0.0, n_bees, n_epochs), #loss history
+                    fill(-1.0, n_bees, n_epochs), #accuracy history
+                    fill(0, n_bees, n_epochs), #n_train history
+                    fill(0, n_bees, n_epochs), #n_subdominant history
+                    fill(0, n_bees, n_epochs), #n_dominant history
+                    fill(-1.0, n_epochs), #propensity ratio history
+                    UInt16(0), #epoch index
+                    )
+    end
+end
+
+function Hive(; n_bees::UInt16 = DEFAULTS[:N_BEES], 
+              n_epochs::UInt16 = DEFAULTS[:N_EPOCHS], 
+              task::Task = RegressionTask(),
+              queen_gene_method::QueenGeneMethod = QueenGeneFromAccuracy())
+
+    bee_list = [Bee(UInt16(i), task) for i in 1:n_bees]
+    return Hive(task, queen_gene_method, n_bees, bee_list, n_epochs)
+end
+
+mutable struct Hive
+    #all parsed argument
+    n_bees::UInt16
+    n_epochs::UInt16
+    n_steps_per_epoch::UInt16
+    learning_rate::Float16
+    punish_rate::Float32
+    lambda_train::Float16
+    lambda_interact::Float16
+    accuracy_sigma::Float16
+    task_type::Task
+    queen_gene_method::QueenGeneMethod
+    bee_list::Vector{Bee}
+    epoch_index::UInt16
+    #simulation results
+    initial_accuracies_list::Vector{Float64}
+    queen_genes_history::Matrix{Float64}
+    loss_history::Matrix{Float64}
+    accuracy_history::Matrix{Float64}
+    n_train_history::Matrix{Int}
+    n_subdominant_history::Matrix{Int}
+    n_dominant_history::Matrix{Int}
+    propensity_ratio_history::Vector{Float64} #not recorded yet
+    function Hive(n_bees::UInt16, 
+                    n_epochs::UInt16,
+                    n_steps_per_epoch::UInt16,
+                    learning_rate::Float16,
+                    punish_rate::Float32,
+                    lambda_train::Float16,
+                    lambda_interact::Float16,
+                    accuracy_sigma::Float16,
+                    task::Task, 
+                    queen_gene_method::QueenGeneMethod, 
+                    bee_list::Vector{Bee})
+        if n_epochs < 1
+            throw(ArgumentError("Number of epochs must be at least 1"))
+        end
+        if n_bees < 1
+            throw(ArgumentError("Number of bees must be at least 1"))
+        end
+        return new(n_bees,
+                    n_epochs,
+                    n_steps_per_epoch,
+                    learning_rate,
+                    punish_rate,
+                    lambda_train,
+                    lambda_interact,
+                    accuracy_sigma,
+                    task, 
+                    queen_gene_method,
+                    bee_list,
+                    UInt16(0), #epoch index
+                    fill(0.0, n_bees), #initial accuracies
+                    fill(0.0, n_bees, n_epochs), #queen genes history
+                    fill(0.0, n_bees, n_epochs), #loss history
+                    fill(-1.0, n_bees, n_epochs), #accuracy history
+                    fill(0, n_bees, n_epochs), #n_train history
+                    fill(0, n_bees, n_epochs), #n_subdominant history
+                    fill(0, n_bees, n_epochs), #n_dominant history
+                    fill(-1.0, n_epochs) #propensity ratio history
+                    )
+    end
+end
+
+function Hive(; n_bees::UInt16 = DEFAULTS[:N_BEES], 
+                n_epochs::UInt16 = DEFAULTS[:N_EPOCHS], 
+                n_steps_per_epoch::UInt16 = DEFAULTS[:N_STEPS_PER_EPOCH],
+                learning_rate::Float16 = DEFAULTS[:LEARNING_RATE],
+                punish_rate::Float32 = DEFAULTS[:PUNISH_RATE],
+                lambda_train::Float16 = DEFAULTS[:LAMBDA_TRAIN],
+                lambda_interact::Float16 = DEFAULTS[:LAMBDA_INTERACT],
+                accuracy_sigma::Float16 = DEFAULTS[:ACCURACY_SIGMA],
+                task::Task = RegressionTask(),
+                queen_gene_method::QueenGeneMethod = QueenGeneFromAccuracy())
+
+    bee_list = [Bee(UInt16(i), task) for i in 1:n_bees]
+    if n_bees != length(bee_list)
+        throw(ArgumentError("Number of bees does not match the length of the bee list"))
+    end
+    return Hive(n_bees,
+                n_epochs,
+                n_steps_per_epoch,
+                learning_rate,
+                punish_rate,
+                lambda_train,
+                lambda_interact,
+                accuracy_sigma,
+                task, 
+                queen_gene_method, 
+                bee_list)
 end

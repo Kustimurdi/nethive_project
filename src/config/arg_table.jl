@@ -48,26 +48,13 @@ function create_arg_parse_settings()
         arg_type = Float16
         default = DEFAULTS[:LAMBDA_INTERACT]
         nargs = 'A'
-        "--accuracy_atol"
-        help = "The precision of the calculation of the accuracy of the sinus regression task"
+        "--accuracy_sigma"
+        help = "The standard deviation of the Gaussian noise added to the accuracy of the neural networks"
         arg_type = Float16
-        default = DEFAULTS[:ACCURACY_ATOL]
+        default = DEFAULTS[:ACCURACY_SIGMA]
         nargs = 'A'
     end
     
     return s
 
 end 
-
-"""
-"--input_size"
-help = "Size of the input layer of the neural networks of the @Bee objects"
-arg_type = Array{UInt16}
-default = DEFAULTS[:INPUT_SIZE]
-nargs = 'A'
-"--output_size"
-help = "Size of the ouput layer of the neural networks of the @Bee objects"
-arg_type = UInt16
-default = DEFAULTS[:OUTPUT_SIZE]
-nargs = 'A'
-"""

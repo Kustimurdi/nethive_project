@@ -1,15 +1,13 @@
 const DEFAULTS = Dict(
-    :INPUT_SIZE => [UInt16(32), UInt16(32), UInt16(1)],
-    :OUTPUT_SIZE => UInt16(10),
     :PARENT_DATASET_NAME => "default",
     :N_BEES => UInt16(3),
-    :N_EPOCHS => UInt16(20),
-    :N_STEPS_PER_EPOCH => 10,
+    :N_EPOCHS => UInt16(100),
+    :N_STEPS_PER_EPOCH => 1,
     :LEARNING_RATE => Float16(0.0003),
     :PUNISH_RATE => Float32(0.0000001),
     :LAMBDA_TRAIN => Float16(0.05),
     :LAMBDA_INTERACT => Float16(5),
-    :ACCURACY_ATOL => Float16(0.05),
+    :ACCURACY_SIGMA => Float16(1),
     :RANDOM_SEED => 1
 )
 

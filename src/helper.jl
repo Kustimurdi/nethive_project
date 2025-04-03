@@ -67,3 +67,19 @@ function save_params(parsed_args, raw_path::String)
     CSV.write(string(raw_path, "/parameters.csv"), dt_long, writeheader=true)
     return 0
 end
+
+function create_linear_dataset(setsize::Int)
+    # Simple linear regression data (y = mx + b)
+    x = rand(setsize) * 10
+    m, b = 2.0, 5.0  # slope and intercept
+    y = m * x .+ b + randn(setsize) * 0.5  # Adding noise
+    return reshape(x, 1, :), reshape(y, 1, :)
+end
+
+function create_sin_dataset(n_peaks, which_peak, setsize::Int)
+    features = rand(setsize) * pi *n_peaks |> x -> reshape(x, 1, :)
+    temp = deepcopy(features)
+    temp[(temp .< (which_peak - 1)*pi) .| (temp .> which_peak*pi)] .= 0
+    labels = abs.(sin.(temp)) * 10
+    return features, labels
+end
