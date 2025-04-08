@@ -1,5 +1,7 @@
 const DEFAULTS = Dict(
     :PARENT_DATASET_NAME => "default",
+    :TASK_TYPE => :regression,
+    :QUEEN_GENE_METHOD => :accuracy_based,
     :N_BEES => UInt16(3),
     :N_EPOCHS => UInt16(100),
     :N_STEPS_PER_EPOCH => 1,
@@ -8,29 +10,11 @@ const DEFAULTS = Dict(
     :LAMBDA_TRAIN => Float16(0.05),
     :LAMBDA_INTERACT => Float16(5),
     :ACCURACY_SIGMA => Float16(1),
-    :RANDOM_SEED => 1
+    :RANDOM_SEED => 1,
+    :TRAINSET_SIZE => 10000,
+    :TESTSET_SIZE => 1000,
+
+    #Regression defaults
+    :REGRESSION_N_PEAKS => 5,
+    :REGRESSION_WHICH_PEAKS => 1
 )
-
-const MAPPING_OUPUT_RANGE = Dict(
-    :MNIST => (1, 10),
-    :CIFAR10 => (11, 20)
-)
-
-"""
-export DEFAULT_INPUT_SIZE, DEFAULT_OUTPUT_SIZE, DEFAULT_N_BEES, DEFAULT_N_EPOCHS
-
-const DEFAULT_INPUT_SIZE = UInt16[28, 28, 1]
-const DEFAULT_OUTPUT_SIZE = UInt16(10)
-const DEFAULT_N_BEES = UInt16(3)
-const DEFAULT_N_EPOCHS = UInt16(5)
-
-function _initialize_exports()
-    for name in names(@__MODULE__, all=true)
-        if startswith(string(name), "DEFAULT_")  # Only export constants starting with "DEFAULT_"
-            export(Symbol(name))
-        end
-    end
-end
-"""
-
-

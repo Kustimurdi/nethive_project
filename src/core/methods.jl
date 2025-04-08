@@ -5,23 +5,7 @@ paramteres:
 - current_accuracies_list: a list that holds the current accuracies of the neural networks of the @Bee objects (the accuracy is a proxy for the queen gene expression)
 - lambda_Interact: a parameter for the sigmoid function that gives the probability of bee_i being in a subdominant interaction with bee_j
 """
-function punish_model!(model::Flux.Chain, dataloader, punish_rate, task::Task)
-    loss_fn(x, y) = compute_task_loss(model, x, y, task)
-    total_batch_loss = 0.0
-    n_batches = 0
-    for (x_batch, y_batch) in dataloader
-        grads = Flux.gradient(() -> loss_fn(x_batch, y_batch), Flux.params(model))
-        for p in Flux.params(model)
-            p .= p .+ punish_rate .* grads[p]
-        end
-
-        total_batch_loss += loss_fn(x_batch, y_batch)
-        n_batches +=1
-    end
-    return total_batch_loss/n_batches
-end
-
-function compute_K_matrix(queen_genes_list; lambda_interact=DEFAULTS[LAMBDA_INTERACT])
+function compute_K_matrix(; queen_genes_list, lambda_interact)
     K_matrix = K_func.(queen_genes_list, queen_genes_list', lambda_interact)
     K_matrix[diagind(K_matrix)] .= 0
     return K_matrix 
@@ -44,30 +28,50 @@ function choose_interaction(h::Hive, a_interact, K_matrix)
     end 
 end
 
+function get_task_instance(symbol::Symbol)::Task
+    if symbol == :regression
+        return RegressionTask()
+    elseif symbol == :linear_regression
+        return LinearRegressionTask()
+    elseif symbol == :none
+        return NoTask()
+    else
+        error("Unsupported task symbol: $symbol")
+    end
+end
 
-function gillespie_regression!(h::Hive; 
-                                trainloader, 
-                                testloader, 
-                                learning_rate=DEFAULTS[:LEARNING_RATE], 
-                                punish_rate=DEFAULTS[:PUNISH_RATE], 
-                                acc_sigma=DEFAULTS[:ACCURACY_ATOL], 
-                                lambda_train=DEFAULTS[:LAMBDA_TRAIN], 
-                                lambda_interact=DEFAULTS[:LAMBDA_INTERACT], 
-                                n_steps_per_epoch=DEFAULTS[:N_STEPS_PER_EPOCH])
+function get_qgm_instance(symbol::Symbol)::QueenGeneMethod
+    if symbol == :from_accuracy
+        return QueenGeneFromAccuracy()
+    elseif symbol == :none
+        return NoQueenGene()
+    else
+        error("Unsupported queen gene method symbol: $symbol")
+    end
+end
+
+
+function gillespie_simulation!(h::Hive, h_paths::HivePaths)
+
+    trainloader, testloader, train_data, test_data = create_dataset(hive.config.task_type, hive.config.task_config)
+    save_taskdata(h_paths.raw_taskdata_path, train_data, test_data)
+
+    queen_gene_method_struct = get_qgm_instance(h.config.queen_gene_method)
+    task_type_struct = get_task_instance(h.config.task_type)
 
     total_elapsed_time = 0.0
     gillespie_time = Float64(0.0)
 
     #Initialize accuracies at the start of the simulation
     for bee in h.bee_list
-        initial_accuracy = calc_accuracy(bee.brain, testloader, h.task_type, acc_sigma=acc_sigma)
+        initial_accuracy = calc_accuracy(bee.brain, testloader, task_type_struct, acc_sigma=h.config.accuracy_sigma)
         h.initial_accuracies_list[bee.id] = initial_accuracy
     end
     save_nn_state(RAW_NET_PATH, h)
 
     queen_genes_vector = [bee.queen_gene for bee in hive.bee_list]
 
-    for epoch in 1:h.n_epochs
+    for epoch in 1:h.config.n_epochs
         epoch_start_time = time()
         @info "Starting epoch $(epoch)"
 
@@ -79,23 +83,23 @@ function gillespie_regression!(h::Hive;
             loop_start_time = time()
 
             # Calculate the interaction propensity for the current epoch
-            a_train = lambda_train * h.n_bees 
-            K_matrix = compute_K_matrix(queen_genes_vector, lambda_interact=lambda_interact)
+            a_train = h.config.lambda_train * h.config.n_bees 
+            K_matrix = compute_K_matrix(queen_genes_list=queen_genes_vector, lambda_interact=h.config.lambda_interact)
             a_interact = sum(K_matrix)
 
             total_propensity = a_train + a_interact
-            d_t = rand(Exponential(1 / (n_steps_per_epoch * h.n_bees)))
+            d_t = rand(Exponential(1 / (h.config.n_steps_per_epoch * h.config.n_bees)))
             gillespie_time += d_t
 
             choose_action = rand() * total_propensity
             if choose_action < a_train
                 # Train a bee
-                selected_bee = h.bee_list[rand(1:h.n_bees)]
-                loss = train_model!(selected_bee.brain, trainloader, h.task_type, learning_rate=learning_rate)
+                selected_bee = h.bee_list[rand(1:h.config.n_bees)]
+                loss = train_model!(selected_bee.brain, trainloader, task_type_struct, learning_rate=h.config.learning_rate)
                 h.loss_history[selected_bee.id, epoch] += loss
 
                 # Calculate the new queen gene
-                new_queen_gene = compute_queen_gene(selected_bee, testloader, h.task_type, h.queen_gene_method)
+                new_queen_gene = compute_queen_gene(selected_bee, testloader, task_type_struct, queen_gene_method_struct)
                 selected_bee.queen_gene = new_queen_gene
 
                 h.n_train_history[selected_bee.id, epoch] += 1
@@ -109,11 +113,11 @@ function gillespie_regression!(h::Hive;
                 sub_bee, dom_bee = choose_interaction(h, a_interact, K_matrix)
 
                 # Apply the interaction and update the queen gene
-                punish_regression_model!(sub_bee.brain, trainloader, punish_rate, h.task_type)
+                punish_regression_model!(sub_bee.brain, trainloader, h.config.punish_rate, task_type_struct)
                 loss = calc_regression_loss(sub_bee.brain, testloader)
-                new_queen_gene = compute_queen_gene(selected_bee, testloader, h.task_type, h.queen_gene_method)
-                if h.queen_gene_method == QueenGeneIncremental()
-                    new_queen_gene = sub_bee.queen_gene - h.queen_gene_method.increment_value
+                new_queen_gene = compute_queen_gene(selected_bee, testloader, task_type_struct, queen_gene_method_struct)
+                if h.queen_gene_method isa QueenGeneIncremental
+                    new_queen_gene = sub_bee.queen_gene - h.config.queen_gene_method.increment_value
                 end
                 sub_bee.queen_gene = new_queen_gene
 
@@ -137,7 +141,7 @@ function gillespie_regression!(h::Hive;
 
         # Calculate the accuracy for each bee
         for bee in h.bee_list
-            h.accuracy_history[bee.id, epoch] = calc_accuracy(bee.brain, testloader, h.task_type, acc_sigma=acc_sigma)
+            h.accuracy_history[bee.id, epoch] = calc_accuracy(bee.brain, testloader, h.config.task_type, acc_sigma=h.config.accuracy_sigma)
         end
 
         h.propensity_ratio_history[epoch] = a_train / a_interact
@@ -148,31 +152,46 @@ function gillespie_regression!(h::Hive;
         total_elapsed_time += elapsed_time
 
         @info "Epoch $(epoch) completed" epoch=epoch elapsed_time=elapsed_time gillespie_time=gillespie_time average_accuracy=mean(h.current_accuracies_list[:,1]) n_actions=n_actions n_train=n_train n_interact=n_interact 
-        save_nn_state(RAW_NET_PATH, h)
+        save_nn_state(h_paths.raw_net_path, h)
     end
     
-    # Save the final data
-    save_data(RAW_PATH, h, n_epochs)
-    @info "Gillespie simulation is over. Data path: $(RAW_PATH)" total_elapsed_time=total_elapsed_time
+    # Save the task data
+    #save_taskdata(RAW_PATH, h)
+    @info "Gillespie simulation is over. " total_elapsed_time=total_elapsed_time
 end
 
-function save_data(raw_path::String, h::Hive, n_epochs=DEFAULTS[:N_EPOCHS])
+function save_data(raw_path::String, h::Hive)
     mkpath(raw_path) 
-    #epoch_ids = collect(1:h.epoch_index) 
-    epoch_ids = collect(1:n_epochs)
-    export_data(string(raw_path, "/accuracy_history", ".csv"), h.accuracy_history, h.n_bees, epoch_ids, "accuracy")
-    export_data(string(raw_path, "/loss_history", ".csv"), h.loss_history, h.n_bees, epoch_ids, "loss")
-    export_data(string(raw_path, "/queen_genes_history", ".csv"), h.queen_genes_history, h.n_bees, epoch_ids, "queen_gene")
-    export_data(string(raw_path, "/train_history", ".csv"), h.n_train_history, h.n_bees, epoch_ids, "train_count")
-    export_data(string(raw_path, "/subdominant_history", ".csv"), h.n_subdominant_history, h.n_bees, epoch_ids, "subdominant_count")
-    export_data(string(raw_path, "/dominant_history", ".csv"), h.n_dominant_history, h.n_bees, epoch_ids, "dominant_count")
+    epoch_ids = collect(1:h.n_epochs)
+
+    data_fields = Dict(
+        "accuracy" => h.accuracy_history,
+        "loss" => h.loss_history,
+        "queen_gene" => h.queen_genes_history,
+        "train_count" => h.n_train_history,
+        "subdominant_count" => h.n_subdominant_history,
+        "dominant_count" => h.n_dominant_history
+    )
+
+    for (name, data) in data_fields
+        export_data(joinpath(raw_path, name * ".csv"), data, h.n_bees, epoch_ids, name)
+    end
+
     return 0
 end
 
-function save_nn_state(raw_net_path::String, h::Hive)
+function save_nn_state(raw_net_path::String, h::Hive, filename_prefix::String = "epoch_")
     mkpath(raw_net_path)
-    brains = [h.bee_list[i].brain for i in 1:h.n_bees]
-    serialize(string(raw_net_path, "epoch_", h.epoch_index, ".brains"), brains)
+
+    brain_states = Dict(
+        "brains" => [bee.brain for bee in h.bee_list],
+        "observation_histories" => [bee.observation_history for bee in h.bee_list]
+    )
+
+    for (name, data) in brain_states
+        serialize(joinpath(raw_net_path, "$(filename_prefix)$(h.epoch_index).$(name)"), data)
+    end
+
     return 0
 end
 
@@ -188,22 +207,27 @@ function save_taskdata(raw_taskdata_path, traindata, testdata)
     CSV.write(string(raw_taskdata_path, "test_targets.csv"), df_test_targets)
 end
 
-function run_regression(; n_bees, n_epochs, n_peaks, which_peak, trainsetsize, testsetsize)
-    h = Hive(n_bees, n_epochs)
-    sin_traindata = create_sin_dataset(n_peaks, which_peak, trainsetsize)
-    sin_testdata = create_sin_dataset(n_peaks, which_peak, testsetsize)
-    sin_trainloader = Flux.DataLoader((sin_traindata[1], sin_traindata[2]), batchsize=128, shuffle=true)
-    sin_testloader = Flux.DataLoader((sin_testdata[1], sin_testdata[2]), batchsize=128, shuffle=true)
-    gillespie_regression!(h, trainloader=sin_trainloader, testloader=sin_testloader, n_epochs=n_epochs)
-end
+function save_simulation_params(config::HiveConfig, raw_path::String)
+    mkpath(raw_path)
+    println("Data path: ", raw_path)
 
-function run_regression_sbatch(trainsetsize, testsetsize)
-    h = Hive(N_BEES, N_EPOCHS)
-    sin_traindata = create_sin_dataset(5, 1, trainsetsize)
-    sin_testdata = create_sin_dataset(5, 1, testsetsize)
-    sin_trainloader = Flux.DataLoader((sin_traindata[1], sin_traindata[2]), batchsize=128, shuffle=true)
-    sin_testloader = Flux.DataLoader((sin_testdata[1], sin_testdata[2]), batchsize=128, shuffle=true)
-    save_taskdata(RAW_TASKDATA_PATH, sin_traindata, sin_testdata)
-    gillespie_regression!(h, trainloader=sin_trainloader, testloader=sin_testloader, n_epochs=N_EPOCHS, acc_atol=ACCURACY_ATOL, lambda_train=LAMBDA_TRAIN, lambda_interact=LAMBDA_INTERACT, n_steps_per_epoch=N_STEPS_PER_EPOCH)
-end
+    params = Dict(Symbol(field) => config[field] for field in fieldnames(HiveConfig))
+    task_params = Dict(Symbol(field) => config.task_config[field] for field in fieldnames(TaskConfig))
+    params = merge(params, task_params)
 
+    df = DataFrame(params, :auto)
+    df[!, :id] = 1:nrow(df)
+
+    # Add metadata
+    metadata = Dict(
+        "git_branch" => get_git_branch(),
+        "git_commit_id" => get_git_commit()
+    )
+
+    for (key, value) in metadata
+        push!(df, (key, value))
+    end
+
+    CSV.write(joinpath(raw_path, "parameters.csv"), df, writeheader=true)
+    return 0
+end

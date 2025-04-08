@@ -854,3 +854,486 @@ function Hive(; n_bees::UInt16 = DEFAULTS[:N_BEES],
                 queen_gene_method, 
                 bee_list)
 end
+
+"""
+-------------------------------------------------
+old function - most likely not needed anymore
+-------------------------------------------------
+"""
+# Define constants
+const DATASET_NAME::String = string(Dates.format(now(), "DyymmddTHHMMSSss"), "I", rand(1:9, 1)[1])
+
+const PARENT_DATASET_NAME::String = haskey(parsed_args, "parent_dataset_name") ? parsed_args["parent_dataset_name"] : DEFAULTS[:PARENT_DATASET_NAME]
+const N_BEES::UInt16 = haskey(parsed_args, "n_bees") ? UInt16(parsed_args["n_bees"]) : DEFAULTS[:N_BEES]
+const N_EPOCHS::UInt16 = haskey(parsed_args, "n_epochs") ? UInt16(parsed_args["n_epochs"]) : DEFAULTS[:N_EPOCHS]
+const N_STEPS_PER_EPOCH::UInt16 = haskey(parsed_args, "n_steps_per_epoch") ? UInt16(parsed_args["n_steps_per_epoch"]) : DEFAULTS[:N_STESP_PER_EPOCH]
+const LEARNING_RATE::Float16 = haskey(parsed_args, "learning_rate") ? Float16(parsed_args["learning_rate"]) : DEFAULTS[:LEARNING_RATE] 
+const PUNISH_RATE::Float32 = haskey(parsed_args, "punish_rate") ? Float32(parsed_args["punish_rate"]) : DEFAULTS[:PUNISH_RATE] 
+const RANDOM_SEED::Float16 = haskey(parsed_args, "random_seed") ? Float16(parsed_args["random_seed"]) : DEFAULTS[:RANDOM_SEED] 
+const ACCURACY_SIGMA::Float16 = haskey(parsed_args, "accuracy_sigma") ? Float16(parsed_args["accuracy_sigma"]) : DEFAULTS[:ACCURACY_SIGMA] 
+const LAMBDA_TRAIN::Float16 = haskey(parsed_args, "lambda_train") ? Float16(parsed_args["lambda_train"]) : DEFAULTS[:LAMBDA_TRAIN] 
+const LAMBDA_INTERACT::Float16 = haskey(parsed_args, "lambda_interact") ? Float16(parsed_args["lambda_interact"]) : DEFAULTS[:LAMBDA_INTERACT] 
+
+const RAW_PATH::String = string("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/", PARENT_DATASET_NAME, "/", DATASET_NAME)
+const RAW_NET_PATH::String = string("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/", PARENT_DATASET_NAME, "/", DATASET_NAME, "/net/")
+const RAW_TASKDATA_PATH::String = string("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/", PARENT_DATASET_NAME, "/", DATASET_NAME, "/taskdata/")
+
+const GIT_COMMIT::String = "877768bd3196673ea241dce41c4afad3f0fbf9db"
+const GIT_BRANCH::String = "modular-version"
+
+
+"""
+--------------------------------------------------------------------
+old functions
+--------------------------------------------------------------------
+"""
+
+"""
+The struct Hive is the main object on which the simulation is performed. It holds all @Bee objects meaning all 
+    neural networks allowing to easily perform all simulation operations on it.
+"""
+mutable struct Hive
+    # all parsed arguments
+    n_bees::UInt16
+    n_epochs::UInt16
+    n_steps_per_epoch::UInt16
+    learning_rate::Float16
+    punish_rate::Float32
+    lambda_train::Float16
+    lambda_interact::Float16
+    accuracy_sigma::Float16
+    task_type::Task
+    queen_gene_method::QueenGeneMethod
+    bee_list::Vector{Bee}
+    epoch_index::UInt16
+    # simulation results
+    initial_accuracies_list::Vector{Float64}
+    queen_genes_history::Matrix{Float64}
+    loss_history::Matrix{Float64}
+    accuracy_history::Matrix{Float64}
+    n_train_history::Matrix{Int}
+    n_subdominant_history::Matrix{Int}
+    n_dominant_history::Matrix{Int}
+    propensity_ratio_history::Vector{Float64} # not recorded yet
+end
+
+function Hive(n_bees::UInt16, 
+              n_epochs::UInt16,
+              n_steps_per_epoch::UInt16,
+              learning_rate::Float16,
+              punish_rate::Float32,
+              lambda_train::Float16,
+              lambda_interact::Float16,
+              accuracy_sigma::Float16,
+              task::Task, 
+              queen_gene_method::QueenGeneMethod, 
+              bee_list::Vector{Bee})
+    # Validate input parameters
+    if n_bees != length(bee_list)
+        throw(ArgumentError("Number of bees does not match the length of the bee list"))
+    end
+    
+    return new(n_bees,
+               n_epochs,
+               n_steps_per_epoch,
+               learning_rate,
+               punish_rate,
+               lambda_train,
+               lambda_interact,
+               accuracy_sigma,
+               task, 
+               queen_gene_method,
+               bee_list,
+               UInt16(0), #epoch index
+               fill(0.0, n_bees), #initial accuracies
+               fill(0.0, n_bees, n_epochs), #queen genes history
+               fill(0.0, n_bees, n_epochs), #loss history
+               fill(-1.0, n_bees, n_epochs), #accuracy history
+               fill(0, n_bees, n_epochs), #n_train history
+               fill(0, n_bees, n_epochs), #n_subdominant history
+               fill(0, n_bees, n_epochs), #n_dominant history
+               fill(-1.0, n_epochs) #propensity ratio history
+               )
+end
+
+function Hive(; 
+    n_bees::UInt16 = DEFAULTS[:N_BEES], 
+    n_epochs::UInt16 = DEFAULTS[:N_EPOCHS], 
+    n_steps_per_epoch::UInt16 = DEFAULTS[:N_STEPS_PER_EPOCH],
+    learning_rate::Float16 = DEFAULTS[:LEARNING_RATE],
+    punish_rate::Float32 = DEFAULTS[:PUNISH_RATE],
+    lambda_train::Float16 = DEFAULTS[:LAMBDA_TRAIN],
+    lambda_interact::Float16 = DEFAULTS[:LAMBDA_INTERACT],
+    accuracy_sigma::Float16 = DEFAULTS[:ACCURACY_SIGMA],
+    task::Task = RegressionTask(),
+    queen_gene_method::QueenGeneMethod = QueenGeneFromAccuracy())
+    
+    # Dynamically generate the bee list
+    bee_list = [Bee(UInt16(i), task) for i in 1:n_bees]
+    return Hive(n_bees, 
+                n_epochs,
+                n_steps_per_epoch,
+                learning_rate,
+                punish_rate,
+                lambda_train,
+                lambda_interact,
+                accuracy_sigma,
+                task, 
+                queen_gene_method, 
+                bee_list)
+end
+
+function create_hive(parsed_args::Dict)
+    # Extract parsed arguments from the dictionary
+    n_bees = get(parsed_args, :n_bees, DEFAULTS[:N_BEES])
+    n_epochs = get(parsed_args, :n_epochs, DEFAULTS[:N_EPOCHS])
+    n_steps_per_epoch = get(parsed_args, :n_steps_per_epoch, DEFAULTS[:N_STEPS_PER_EPOCH])
+    learning_rate = get(parsed_args, :learning_rate, DEFAULTS[:LEARNING_RATE])
+    punish_rate = get(parsed_args, :punish_rate, DEFAULTS[:PUNISH_RATE])
+    lambda_train = get(parsed_args, :lambda_train, DEFAULTS[:LAMBDA_TRAIN])
+    lambda_interact = get(parsed_args, :lambda_interact, DEFAULTS[:LAMBDA_INTERACT])
+    accuracy_sigma = get(parsed_args, :accuracy_sigma, DEFAULTS[:ACCURACY_SIGMA])
+    task = get(parsed_args, :task, RegressionTask())  # Default to RegressionTask if not provided
+    queen_gene_method = get(parsed_args, :queen_gene_method, QueenGeneFromAccuracy())  # Default to QueenGeneFromAccuracy if not provided
+    
+    # Create bee_list if not provided in the parsed arguments
+    bee_list = get(parsed_args, :bee_list, [Bee(UInt16(i), task) for i in 1:n_bees])
+    
+    # Create and return the Hive object using the constructor
+    return Hive(n_bees, 
+                n_epochs,
+                n_steps_per_epoch,
+                learning_rate,
+                punish_rate,
+                lambda_train,
+                lambda_interact,
+                accuracy_sigma,
+                task, 
+                queen_gene_method, 
+                bee_list)
+end
+
+
+
+"""
+----------------------------
+old functions
+----------------------------
+"""
+
+function save_data(raw_path::String, h::Hive)
+    mkpath(raw_path) 
+    epoch_ids = collect(1:h.n_epochs)
+    export_data(string(raw_path, "/accuracy_history", ".csv"), h.accuracy_history, h.n_bees, epoch_ids, "accuracy")
+    export_data(string(raw_path, "/loss_history", ".csv"), h.loss_history, h.n_bees, epoch_ids, "loss")
+    export_data(string(raw_path, "/queen_genes_history", ".csv"), h.queen_genes_history, h.n_bees, epoch_ids, "queen_gene")
+    export_data(string(raw_path, "/train_history", ".csv"), h.n_train_history, h.n_bees, epoch_ids, "train_count")
+    export_data(string(raw_path, "/subdominant_history", ".csv"), h.n_subdominant_history, h.n_bees, epoch_ids, "subdominant_count")
+    export_data(string(raw_path, "/dominant_history", ".csv"), h.n_dominant_history, h.n_bees, epoch_ids, "dominant_count")
+    return 0
+end
+
+function save_nn_state(raw_net_path::String, h::Hive)
+    mkpath(raw_net_path)
+    brains = [h.bee_list[i].brain for i in 1:h.n_bees]
+    serialize(string(raw_net_path, "epoch_", h.epoch_index, ".brains"), brains)
+    return 0
+end
+
+function run_regression(; n_bees, n_epochs, n_peaks, which_peak, trainsetsize, testsetsize)
+    h = Hive(n_bees, n_epochs)
+    sin_traindata = create_sin_dataset(n_peaks, which_peak, trainsetsize)
+    sin_testdata = create_sin_dataset(n_peaks, which_peak, testsetsize)
+    sin_trainloader = Flux.DataLoader((sin_traindata[1], sin_traindata[2]), batchsize=128, shuffle=true)
+    sin_testloader = Flux.DataLoader((sin_testdata[1], sin_testdata[2]), batchsize=128, shuffle=true)
+    gillespie_regression!(h, trainloader=sin_trainloader, testloader=sin_testloader, n_epochs=n_epochs)
+end
+
+function run_regression_sbatch(trainsetsize, testsetsize)
+    h = Hive(N_BEES, N_EPOCHS)
+    sin_traindata = create_sin_dataset(5, 1, trainsetsize)
+    sin_testdata = create_sin_dataset(5, 1, testsetsize)
+    sin_trainloader = Flux.DataLoader((sin_traindata[1], sin_traindata[2]), batchsize=128, shuffle=true)
+    sin_testloader = Flux.DataLoader((sin_testdata[1], sin_testdata[2]), batchsize=128, shuffle=true)
+    save_taskdata(RAW_TASKDATA_PATH, sin_traindata, sin_testdata)
+    gillespie_regression!(h, trainloader=sin_trainloader, testloader=sin_testloader, n_epochs=N_EPOCHS, acc_atol=ACCURACY_ATOL, lambda_train=LAMBDA_TRAIN, lambda_interact=LAMBDA_INTERACT, n_steps_per_epoch=N_STEPS_PER_EPOCH)
+end
+
+"""
+------------------------------------------------------------
+old training function
+------------------------------------------------------------
+"""
+
+function train_regression_model!(model, dataloader; learning_rate=DEFAULTS[:LEARNING_RATE])
+    loss_fn(x, y) = Flux.Losses.mse(model(x), y)
+    optimizer = Flux.Adam(learning_rate)
+    total_batch_loss = 0.0
+    n_batches = 0
+    for (x_batch, y_batch) in dataloader
+        Flux.train!(loss_fn, Flux.params(model), [(x_batch, y_batch)], optimizer)
+
+        total_batch_loss += loss_fn(x_batch, y_batch)
+        n_batches += 1
+    end
+
+    return total_batch_loss / n_batches  # Return average loss
+end
+
+"""
+the function @calc_accuracy calculates the accuracy of a neural network given by @model by averaging the results of the model on the dataset given in @dataloader
+"""
+function calc_regression_accuracy(model, dataloader; atol=0.005, num_batches::Int=typemax(Int))
+    correct = 0
+    total = 0
+    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
+        preds = model(x_batch)
+        truths = y_batch       # Get true labels
+        result = isapprox.(vec(preds), vec(truths), atol=atol)
+
+        num_true = count(result)
+        num_false = count(!, result)
+
+        correct += num_true
+        total += length(truths)
+    end
+    return correct / total
+end
+
+#new regression accuracy for smoother transitions: look at difference between output and truth and 
+#calculate output of some score function eg gaussian dist
+
+"""
+the function @calc_accuracy calculates the accuracy of a neural network given by @model by averaging the results of the model on the dataset given in @dataloader
+"""
+function calc_accuracy_labels(model, dataloader; n_labels = 10, num_batches::Int=typemax(Int))
+    correct = 0
+    total = 0
+    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
+        preds = Flux.onecold(model(x_batch), 0:(n_labels - 1))  # Get predicted labels
+        truths = Flux.onecold(y_batch, 0:n_labels - 1)       # Get true labels
+        correct += sum(preds .== truths)
+        total += length(truths)
+    end
+    return correct / total
+end
+
+function calc_regression_loss(model, dataloader)
+    loss_fn(x, y) = Flux.Losses.mse(model(x), y)
+    total_batch_loss = 0.0
+    n_batches = 0
+    for (x_batch, y_batch) in dataloader
+        total_batch_loss += loss_fn(x_batch, y_batch)
+        n_batches += 1
+    end
+
+    return total_batch_loss / n_batches  # Return average loss
+end
+
+function calc_accuracy(bee::Bee, dataloader; num_batches::Int=typemax(Int))
+    task_type = bee.task_type
+    
+    # For Regression tasks
+    if task_type isa RegressionTask || task_type isa LinearRegressionTask
+        return calc_gaussian_regression_accuracy(bee.brain, dataloader, num_batches=num_batches)
+    
+    # For Classification tasks
+    elseif task_type isa ClassificationTask
+        return calc_accuracy_labels(bee.brain, dataloader, n_labels=task_type.output_size, num_batches=num_batches)
+    
+    else
+        error("Unknown task type: $task_type")
+    end
+end
+
+function train_model!(bee::Bee, dataloader; learning_rate=DEFAULTS[:LEARNING_RATE])
+    # If bee has no task, skip training
+    if bee.task_type isa NoTask
+        println("Bee $bee.id has no task and will not be trained.")
+        return 0.0  # No training performed, return 0 loss
+    end
+    
+    # Loss function depending on task type
+    if bee.brain isa Flux.Chain  # Check if bee has a valid brain model (neural network)
+        task_type = bee.task_type
+
+        if task_type isa RegressionTask
+            # Regression task (e.g., using MSE loss)
+            loss_fn(x, y) = Flux.Losses.mse(bee.brain(x), y)
+
+        elseif task_type isa LinearRegressionTask
+            # Linear regression task (using MSE loss but adjusted model if needed)
+            loss_fn(x, y) = Flux.Losses.mse(bee.brain(x), y)
+
+        elseif task_type isa ClassificationTask
+            # Classification task (e.g., using cross-entropy loss)
+            loss_fn(x, y) = Flux.Losses.logitcrossentropy(bee.brain(x), y)
+
+        else
+            error("Unknown task type: $task_type")
+        end
+
+        optimizer = Flux.Adam(learning_rate)
+        total_batch_loss = 0.0
+        n_batches = 0
+
+        # Training loop
+        for (x_batch, y_batch) in dataloader
+            Flux.train!(loss_fn, Flux.params(bee.brain), [(x_batch, y_batch)], optimizer)
+
+            total_batch_loss += loss_fn(x_batch, y_batch)
+            n_batches += 1
+        end
+
+        return total_batch_loss / n_batches  # Return average loss
+    else
+        error("Bee brain is not properly initialized.")
+    end
+end
+
+
+
+
+
+
+
+"""
+-------------------------------------------------
+old function
+-------------------------------------------------
+"""
+
+"""
+Save the parameters of the simulations
+"""
+function save_params(parsed_args, raw_path::String)
+    mkpath(raw_path)
+    print("Data path: ", raw_path, "\n")
+
+    dt = DataFrame(parsed_args)
+    println(nrow(dt))
+    println(dt)
+
+    dt[!, :id] = 1:nrow(dt)
+    insertcols!(dt, 1, :dataset_name => DATASET_NAME)
+
+    dt_long = stack(dt, Not(:id))
+    select!(dt_long, Not(:id))
+    rename!(dt_long, Symbol.(["id", "value"]))
+
+    git_branch_row = DataFrame(id="git branch", value=GIT_BRANCH)
+    append!(dt_long, git_branch_row)
+
+    git_commit_id_row = DataFrame(id="git commit id", value=GIT_COMMIT)
+    append!(dt_long, git_commit_id_row)
+
+    CSV.write(string(raw_path, "/parameters.csv"), dt_long, writeheader=true)
+    return 0
+end
+
+function create_dataset(task::Task, trainsetsize::Int, testsetsize::Int)
+    if isa(task, RegressionTask)
+        train_data = create_sin_dataset(5, 1, trainsetsize)
+        test_data = create_sin_dataset(5, 1, testsetsize)
+        return Flux.DataLoader((train_data[1], train_data[2]), batchsize=128, shuffle=true),
+               Flux.DataLoader((test_data[1], test_data[2]), batchsize=128, shuffle=true)
+    elseif isa(task, ClassificationTask)
+        # Example for a classification task dataset
+        # NOT IMPLEMENTED
+        train_data = create_classification_dataset(trainsetsize)
+        test_data = create_classification_dataset(testsetsize)
+        return Flux.DataLoader((train_data[1], train_data[2]), batchsize=128, shuffle=true),
+               Flux.DataLoader((test_data[1], test_data[2]), batchsize=128, shuffle=true)
+    elseif isa(task, LinearRegressionTask)
+        # Example for a linear regression task dataset
+        train_data = create_linear_dataset(trainsetsize)
+        test_data = create_linear_dataset(testsetsize)
+        return Flux.DataLoader((train_data[1], train_data[2]), batchsize=128, shuffle=true),
+               Flux.DataLoader((test_data[1], test_data[2]), batchsize=128, shuffle=true)
+    else
+        throw(ArgumentError("Unsupported task type: $(task)"))
+    end
+end
+
+function create_dataset(task::Task, config::TaskConfig)
+    if isa(task, NoTask)
+        return nothing, nothing  # No data needed for NoTask
+    elseif isa(task, RegressionTask)
+        # Use task-specific parameters for regression
+        train_data = create_sin_dataset(config.n_peaks, config.which_peak, config.trainset_size),
+        test_data = create_sin_dataset(config.n_peaks, config.which_peak, config.testset_size)
+        return Flux.DataLoader((train_data[1], train_data[2]), batchsize=128, shuffle=true),
+               Flux.DataLoader((test_data[1], test_data[2]), batchsize=128, shuffle=true)
+    elseif isa(task, LinearRegressionTask)
+        # Use default parameters for linear regression
+        train_data = create_linear_dataset(config.trainset_size),
+        test_data = create_linear_dataset(config.testset_size)
+        return Flux.DataLoader((train_data[1], train_data[2]), batchsize=128, shuffle=true),
+               Flux.DataLoader((test_data[1], test_data[2]), batchsize=128, shuffle=true)
+    elseif isa(task, ClassificationTask)
+        # Example for a classification task dataset
+        # NOT IMPLEMENTED
+        throw(ArgumentError("Classification dataset creation not implemented"))
+    else
+        throw(ArgumentError("Unsupported task type: $(task)"))
+    end
+end
+
+
+function run_simulation(parsed_args::Dict{String, Any}; save_results::Bool = true, verbose::Bool = true)
+    if verbose
+        println("Creating HiveConfig...")
+    end
+    hive_config = create_hive_config(parsed_args)
+
+    if verbose
+        println("Setting up paths...")
+    end
+    hive_paths = create_hive_paths(hive_config)
+
+    if verbose
+        println("Building hive...")
+    end
+    hive = Hive(hive_config)
+
+    if verbose
+        println("Running Gillespie simulation...")
+    end
+    gillespie_simulation(hive)
+
+    if save_results
+        if verbose
+            println("Saving parameters...")
+        end
+        save_params(hive_config, hive_paths.raw_path)
+
+        if verbose
+            println("Saving data ")
+        end
+        save_data(hive_paths.raw_path, hive)
+    end
+
+    if verbose
+        println("Simulation completed.")
+    end
+
+    return hive
+end
+
+function run_simulation(parsed_args)
+    hive_config = create_hive_config(parsed_args)
+    hive_paths = create_hive_paths(hive_config)
+
+    # Create hive
+    hive = Hive(hive_config)
+
+    # Run simulation
+    gillespie_simulation(hive)
+
+    # Save everything
+    save_params(hive_config, hive_paths.raw_path)
+    save_data(hive_paths.raw_path, hive)
+    @info "Data path: $(hive_paths.raw_path)"
+
+    return hive  # optionally return if you want to inspect it
+end

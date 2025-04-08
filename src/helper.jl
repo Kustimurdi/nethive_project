@@ -1,24 +1,3 @@
-using Revise
-using Makie
-using CairoMakie
-using Plots
-using LinearAlgebra
-using Random
-using ArgParse
-using Flux
-using MLDatasets
-using CSV
-using DataFrames
-using Dates
-using Distributions
-using Images
-using Test
-using Serialization
-using Logging
-using LoggingExtras
-global_logger(ConsoleLogger(stderr, Logging.Info))
-#global_logger(ConsoleLogger(stdout))
-
 
 function export_data(file_path::String, data::Array, n_ids::Integer, epoch_ids::Vector{Int64}, value_col_name::String)
     if ndims(data) != 2
@@ -39,47 +18,18 @@ function export_data(file_path::String, data::Array, n_ids::Integer, epoch_ids::
     return 0
 end
 
-
-"""
-Save the parameters of the simulations
-"""
-function save_params(parsed_args, raw_path::String)
-    mkpath(raw_path)
-    print("Data path: ", raw_path, "\n")
-
-    dt = DataFrame(parsed_args)
-    println(nrow(dt))
-    println(dt)
-
-    dt[!, :id] = 1:nrow(dt)
-    insertcols!(dt, 1, :dataset_name => DATASET_NAME)
-
-    dt_long = stack(dt, Not(:id))
-    select!(dt_long, Not(:id))
-    rename!(dt_long, Symbol.(["id", "value"]))
-
-    git_branch_row = DataFrame(id="git branch", value=GIT_BRANCH)
-    append!(dt_long, git_branch_row)
-
-    git_commit_id_row = DataFrame(id="git commit id", value=GIT_COMMIT)
-    append!(dt_long, git_commit_id_row)
-
-    CSV.write(string(raw_path, "/parameters.csv"), dt_long, writeheader=true)
-    return 0
+function get_git_branch()
+    return try
+        read(`git rev-parse --abbrev-ref HEAD`, String) |> strip
+    catch
+        "unknown"
+    end
 end
 
-function create_linear_dataset(setsize::Int)
-    # Simple linear regression data (y = mx + b)
-    x = rand(setsize) * 10
-    m, b = 2.0, 5.0  # slope and intercept
-    y = m * x .+ b + randn(setsize) * 0.5  # Adding noise
-    return reshape(x, 1, :), reshape(y, 1, :)
-end
-
-function create_sin_dataset(n_peaks, which_peak, setsize::Int)
-    features = rand(setsize) * pi *n_peaks |> x -> reshape(x, 1, :)
-    temp = deepcopy(features)
-    temp[(temp .< (which_peak - 1)*pi) .| (temp .> which_peak*pi)] .= 0
-    labels = abs.(sin.(temp)) * 10
-    return features, labels
+function get_git_commit()
+    return try
+        read(`git rev-parse HEAD`, String) |> strip
+    catch
+        "unknown"
+    end
 end

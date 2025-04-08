@@ -14,7 +14,7 @@ date
 echo $PWD
 
 echo $@
-julia --project=/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/env_nethive /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/src/tests/testing.jl $@ 2>&1 | tee /scratch/n/N.Pfaffenzeller/nikolas_nethive/logs/full_log_${SLURM_JOB_ID}.log
+julia --project=/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/env_nethive /scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/src/tests/runtests.jl $@ 2>&1 | tee /scratch/n/N.Pfaffenzeller/nikolas_nethive/logs/full_log_${SLURM_JOB_ID}.log
 
 date
 exit 0

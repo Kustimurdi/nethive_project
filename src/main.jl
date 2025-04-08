@@ -3,6 +3,7 @@
 exec julia --optimize=3 --threads=4 "${BASH_SOURCE[0]}" "$@"
 =#
 
+# -- Environment setup --
 import Pkg
 using Pkg
 Pkg.activate("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/env_nethive/")
@@ -10,36 +11,29 @@ Pkg.instantiate()
 
 print(string("Current working dir: ", pwd(), "\n"))
 
-"""
--------------------------------------------------------------------
-1. part - setup of arguments and constants
--------------------------------------------------------------------
-"""
-
-include("helper.jl")
+# -- Load packages --
+include("dependencies.jl")
 include("config/defaults.jl")
 include("config/arg_table.jl")
-include("config/constants.jl")
+include("config/parse_args.jl")
+include("tasks/task_types.jl")
+include("tasks/task_utils.jl")
+include("tasks/task_training.jl")
+include("core/definitions.jl")
+include("core/methods.jl")
+include("core/queen_gene.jl")
+include("models/models.jl")
+include("helper.jl")
+include("simulation.jl")
+
+# -- Parse Args and Configure Simulation --
+s = create_arg_parse_settings(DEFAULTS)
+parsed_args = parse_args(s)
 @show ARGS
-save_params(parsed_args, RAW_PATH)
 
 
-"""
--------------------------------------------------------------------
-2. part - setup of the simulation and run 
--------------------------------------------------------------------
-"""
-
-include("definitions.jl")
-include("methods.jl")
-
-
-#include("tests/methods_for_testing.jl")
-run_regression_sbatch(10000, 1000)
-#run_straightuptrain(10000, 1000)
-#run_testing_sbatch(10000, 1000)
-
-
+# -- Run Simulation --
+run_simulation(parsed_args; save_results=true, verbose=true, seed=parsed_args["random_seed"])
 @info string("DONE!")
 
 
@@ -62,4 +56,13 @@ TODO:
 - check learning process, somehow in the gillespie they learn faster than outside although atol is 
   even lower in gillespie
 - using defaults results in problems sometimes when defining a value manually at points
+"""
+
+
+
+
+"""
+TODO2
+- break circular dependency of queen gene und definitions
+-  uberarbeite gillespie simulation sodass task type und queen gene am anfng in ein struct uebersetzt wird
 """
