@@ -1,10 +1,11 @@
 function TaskConfig(parsed_args)
     task_type = parsed_args["task_type"]
+    #task_type = Symbol(parsed_args["task_type"])
 
     if task_type == :regression || task_type == :linear_regression
         return RegressionTaskConfig(
-            parsed_args["n_peaks"],
-            parsed_args["which_peak"],
+            parsed_args["regression_n_peaks"],
+            parsed_args["regression_which_peak"],
             parsed_args["trainset_size"],
             parsed_args["testset_size"]
         )
@@ -21,20 +22,30 @@ function TaskConfig(parsed_args)
     end
 end
 
-function create_linear_dataset(setsize::Int)
-    # Simple linear regression data (y = mx + b)
-    x = rand(setsize) * 10
-    m, b = 2.0, 5.0  # slope and intercept
-    y = m * x .+ b + randn(setsize) * 0.5  # Adding noise
-    return reshape(x, 1, :), reshape(y, 1, :)
+function get_task_instance(symbol::Symbol)::AbstractTask
+    if symbol == :regression
+        return RegressionTask()
+    elseif symbol == :linear_regression
+        return LinearRegressionTask()
+    elseif symbol == :none
+        return NoTask()
+    else
+        error("Unsupported task symbol: $symbol")
+    end
 end
 
-function create_sin_dataset(n_peaks, which_peak, setsize::Int)
-    features = rand(setsize) * pi *n_peaks |> x -> reshape(x, 1, :)
-    temp = deepcopy(features)
-    temp[(temp .< (which_peak - 1)*pi) .| (temp .> which_peak*pi)] .= 0
-    labels = abs.(sin.(temp)) * 10
-    return features, labels
+function get_qgm_instance(symbol::Symbol)::QueenGeneMethod
+    if symbol == :accuracy
+        return QueenGeneFromAccuracy()
+    elseif symbol == :loss
+        return QueenGeneFromLoss()
+    elseif symbol == :incremental
+        qgir = DEFAULTS[:queen_gene_incremental_rate]
+        qgdr = DEFAULTS[:queen_gene_decremental_rate]
+        return QueenGeneIncremental(qgir, qgdr)
+    else
+        error("Unsupported queen gene method symbol: $symbol")
+    end
 end
 
 function create_dataset(task::RegressionTask, config::RegressionTaskConfig)
@@ -60,5 +71,21 @@ function create_dataset(task::ClassificationTask, config::ClassificationTaskConf
 end
 
 function create_dataset(task::NoTask, config::NoTaskConfig)
-    return nothing
+    return nothing, nothing, nothing, nothing
+end
+
+function create_linear_dataset(setsize::Int)
+    # Simple linear regression data (y = mx + b)
+    x = rand(setsize) * 10
+    m, b = 2.0, 5.0  # slope and intercept
+    y = m * x .+ b + randn(setsize) * 0.5  # Adding noise
+    return reshape(Float32.(x), 1, :), reshape(Float32.(y), 1, :)
+end
+
+function create_sin_dataset(n_peaks, which_peak, setsize::Int)
+    features = rand(setsize) * pi *n_peaks |> x -> reshape(x, 1, :)
+    temp = deepcopy(features)
+    temp[(temp .< (which_peak - 1)*pi) .| (temp .> which_peak*pi)] .= 0
+    labels = abs.(sin.(temp)) * 10
+    return Float32.(features), Float32.(labels)
 end

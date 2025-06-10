@@ -4,82 +4,92 @@ function create_arg_parse_settings(defaults::Dict{Symbol, Any} = DEFAULTS)
         "--parent_dataset_name"
         help = "Name of the folder housing the datasets"
         arg_type = String
-        default = defaults[:PARENT_DATASET_NAME]
+        default = defaults[:parent_dataset_name]
         nargs = 'A'
         "--task_type"
         help = "The type of task to be performed"
         arg_type = Symbol
-        default = defaults[:TASK_TYPE]
+        default = defaults[:task_type]
         nargs = 'A'
         "--queen_gene_method"
         help = "The method to select the queen gene"
         arg_type = Symbol
-        default = defaults[:QUEEN_GENE_METHOD]
+        default = defaults[:queen_gene_method]
         nargs = 'A'
         "--n_bees"
         help = "The number of neural networks in the hive"
         arg_type = UInt16
-        default = defaults[:N_BEES]
+        default = defaults[:n_bees]
         nargs = 'A'
         "--n_epochs"
         help = "Number of epochs to train"
         arg_type = UInt16
-        default = defaults[:N_EPOCHS]
+        default = defaults[:n_epochs]
         nargs = 'A'
         "--n_steps_per_epoch"
         help = "Number of actions every neural network will take on average in one epoch"
         arg_type = UInt16
-        default = defaults[:N_STEPS_PER_EPOCH]
+        default = defaults[:n_steps_per_epoch]
         nargs = 'A'
         "--learning_rate"
         help = "Learning rate for the update step of the neural networks"
-        arg_type = Float16
-        default = defaults[:LEARNING_RATE]
+        arg_type = Float32
+        default = defaults[:learning_rate]
         nargs = 'A'
         "--punish_rate"
         help = "Prefactor for the negative update step of the dominated neural network"
         arg_type = Float32
-        default = defaults[:PUNISH_RATE]
+        default = defaults[:punish_rate]
         nargs = 'A'
         "--lambda_train"
         help = "The rate at which each individual neural networks will train"
-        arg_type = Float16
-        default = defaults[:LAMBDA_TRAIN]
+        arg_type = Float64
+        default = defaults[:lambda_train]
         nargs = 'A'
         "--lambda_interact"
         help = "The exponent prefactor of the inverse sigmoid function of the interaction rate"
         arg_type = Float16
-        default = defaults[:LAMBDA_INTERACT]
+        default = defaults[:lambda_interact]
         nargs = 'A'
         "--accuracy_sigma"
         help = "The standard deviation of the Gaussian noise added to the accuracy of the neural networks"
         arg_type = Float16
-        default = defaults[:ACCURACY_SIGMA]
+        default = defaults[:accuracy_sigma]
         nargs = 'A'
         "--random_seed"
         help = "The integer to set the seed for Random.seed!()"
         arg_type = Int
-        default = defaults[:RANDOM_SEED]
+        default = defaults[:random_seed]
         nargs = 'A'
         "--trainset_size"
         help = "The size of the training set"
         arg_type = Int
-        default = defaults[:TRAINSET_SIZE]
+        default = defaults[:trainset_size]
         nargs = 'A'
         "--testset_size"
         help = "The size of the test set"
         arg_type = Int
-        default = defaults[:TESTSET_SIZE]
+        default = defaults[:testset_size]
         nargs = 'A'
         "--regression_n_peaks"
         help = "The number of sinus peaks in the regression task"
         arg_type = Int
-        default = defaults[:REGRESSION_N_PEAKS]
+        default = defaults[:regression_n_peaks]
         nargs = 'A'
-        "--regression_which_peaks"
+        "--regression_which_peak"
         help = "The index of the sinus peak in the regression task"
         arg_type = Int
-        default = defaults[:REGRESSION_WHICH_PEAKS]
+        default = defaults[:regression_which_peak]
+        nargs = 'A'
+        "--initial_queen_gene"
+        help = "The initial value of the queen gene"
+        arg_type = Float64
+        default = defaults[:initial_queen_gene]
+        nargs = 'A'
+        "--save_nn_epochs"
+        help = "The epoch steps at which the neural networks get saved"
+        arg_type = Int
+        default = defaults[:save_nn_epochs]
         nargs = 'A'
     end
     

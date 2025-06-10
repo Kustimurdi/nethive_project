@@ -1,6 +1,3 @@
-using Test
-include("../config/defaults.jl")
-
 @testset "Defaults Test" begin
     println(DEFAULTS[:INPUT_SIZE])
 end 

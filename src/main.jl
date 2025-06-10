@@ -11,20 +11,34 @@ Pkg.instantiate()
 
 print(string("Current working dir: ", pwd(), "\n"))
 
-# -- Load packages --
-include("dependencies.jl")
-include("config/defaults.jl")
-include("config/arg_table.jl")
-include("config/parse_args.jl")
-include("tasks/task_types.jl")
-include("tasks/task_utils.jl")
-include("tasks/task_training.jl")
-include("core/definitions.jl")
-include("core/methods.jl")
-include("core/queen_gene.jl")
-include("models/models.jl")
-include("helper.jl")
-include("simulation.jl")
+
+# -- Load packages in dependency-safe order--
+
+# 1. Dependencies and general helpers
+include("../src/dependencies.jl")
+include("../src/helper.jl")  # Uses the packages defined above
+
+# 2. Config and argument parsing
+include("../src/config/defaults.jl")
+include("../src/config/arg_table.jl")
+include("../src/config/parse_args.jl")
+
+# 3. Task system
+include("../src/tasks/task_types.jl")     # AbstractTaskConfig, Task, etc.
+include("../src/tasks/task_utils.jl")     # TaskConfig, accuracy, loss, etc.
+
+# 4. Models
+include("../src/models/models.jl")        # build_model, etc.
+
+# 5. Core simulation logic
+include("../src/core/definitions.jl")     # Bee, Hive, HiveConfig, etc.
+include("../src/core/queen_gene.jl")      # QueenGeneMethod types and compute logic
+include("../src/core/methods.jl")         # punish_model, gillespie_simulation, etc.
+include("../src/tasks/task_training.jl")  # Training-related functions
+
+# 6. Simulation entry point
+include("../src/simulation.jl")
+
 
 # -- Parse Args and Configure Simulation --
 s = create_arg_parse_settings(DEFAULTS)
@@ -33,20 +47,13 @@ parsed_args = parse_args(s)
 
 
 # -- Run Simulation --
-run_simulation(parsed_args; save_results=true, verbose=true, seed=parsed_args["random_seed"])
+hive = run_simulation(parsed_args; save_data=true, verbose=true, seed=parsed_args["random_seed"])
 @info string("DONE!")
-
 
 
 """
 TODO:
 - test the neural networks
-- test the gillespie only with the neural networks learning DONE
-- implement the rest of gillespie
-
-
-- implement R code to load data and create plots for the individual bees and the average over the bees
-- implement second training loop and adjust accurcies
 
 
 - look at the ratio between the two propensities over time and adjust lambda_train accordingly

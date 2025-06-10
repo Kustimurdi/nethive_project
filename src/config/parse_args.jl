@@ -1,5 +1,5 @@
 # Parse arguments
-function parse_args(args)
+function cparse_args(arg_table::ArgParseSettings; args::Vector{String} = ARGS)
     parsed_args = ArgParse.parse_args(args, arg_table)
 
     # Convert string values to Symbol where needed

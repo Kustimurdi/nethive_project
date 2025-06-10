@@ -3,9 +3,9 @@
 #SBATCH --error=../hive_logs/error_%j.log
 #SBATCH --open-mode=append
 #SBATCH --time=03:00:00
-#SBATCH --mem-per-cpu=6GB
+#SBATCH --mem-per-cpu=2GB
 #SBATCH --cpus-per-task=1
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=END
 #SBATCH --mail-user=ge69mer@mytum.de
 #SBATCH --export=all
 #SBATCH --partition=th-ws

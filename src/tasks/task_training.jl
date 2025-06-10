@@ -1,9 +1,13 @@
-function train_model!(model, dataloader, task::Task; learning_rate=DEFAULTS[:LEARNING_RATE])
-    optimizer = Flux.Adam(learning_rate)
+function train_model!(model, dataloader, task::AbstractTask; learning_rate)
+    if task isa NoTask
+        return 0.0  # No task, no training
+    end
+    #optimizer = Flux.Adam(learning_rate)
+    optimizer = Flux.Descent(learning_rate)
     total_batch_loss = 0.0
     n_batches = 0
 
-    loss_fn(x, y) = compute_task_loss(model, x, y, task)  # Unified loss function
+    loss_fn(x, y) = compute_task_loss(task, model, x, y)  # Unified loss function
 
     for (x_batch, y_batch) in dataloader
         Flux.train!(loss_fn, Flux.params(model), [(x_batch, y_batch)], optimizer)
@@ -15,8 +19,11 @@ function train_model!(model, dataloader, task::Task; learning_rate=DEFAULTS[:LEA
     return total_batch_loss / max(n_batches, 1)
 end
 
-function punish_model!(model::Flux.Chain, dataloader, punish_rate, task::Task)
-    loss_fn(x, y) = compute_task_loss(model, x, y, task)
+function punish_model!(model::Flux.Chain, dataloader, task::AbstractTask; punish_rate)
+    if task isa NoTask
+        return 0.0  # No task, no punishment
+    end
+    loss_fn(x, y) = compute_task_loss(task, model, x, y)
     total_batch_loss = 0.0
     n_batches = 0
     for (x_batch, y_batch) in dataloader
@@ -54,6 +61,7 @@ function calc_gaussian_regression_accuracy(model, dataloader; sigma=1.0, num_bat
     
     for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
         preds = model(x_batch)
+
         diffs = vec(preds) .- vec(y_batch)  # Calculate the differences
         
         # Apply the Gaussian function to each difference
@@ -78,25 +86,28 @@ function calc_accuracy_labels(model, dataloader; n_labels=10, num_batches::Int=t
     return correct / total
 end
 
-function calc_accuracy(model, dataloader, task::Task; acc_sigma=1.0, num_batches::Int=typemax(Int))
+function calc_accuracy(model, dataloader, task::AbstractTask; acc_sigma=1.0, num_batches::Int=typemax(Int))
     if task isa RegressionTask || task isa LinearRegressionTask
         return calc_gaussian_regression_accuracy(model, dataloader, sigma=acc_sigma, num_batches=num_batches)
     
     elseif task isa ClassificationTask
         return calc_accuracy_labels(model, dataloader, n_labels=task.output_size, num_batches=num_batches)
     
+    elseif task isa NoTask
+        return 0.0  # No task, no meaningful accuracy
+
     else
         error("Unknown task type: $task")
     end
 end
 
 
-function calc_loss(model, dataloader, task::Task)
+function calc_loss(model, dataloader, task::AbstractTask)
     total_batch_loss = 0.0
     n_batches = 0
 
     for (x_batch, y_batch) in dataloader
-        loss = compute_task_loss(model, x_batch, y_batch, task)
+        loss = compute_task_loss(task, model, x_batch, y_batch)
         total_batch_loss += loss
         n_batches += 1
     end
@@ -104,11 +115,11 @@ function calc_loss(model, dataloader, task::Task)
     return total_batch_loss / max(n_batches, 1)  # Avoid division by zero
 end
 
-function compute_task_loss(::RegressionTask, model, x, y)
+function compute_task_loss(task::RegressionTask, model::Flux.Chain, x, y)
     return Flux.Losses.mse(model(x), y)
 end
 
-function compute_task_loss(::LinearRegressionTask, model, x, y)
+function compute_task_loss(task::LinearRegressionTask, model, x, y)
     return Flux.Losses.mse(model(x), y)
 end
 
@@ -120,3 +131,8 @@ function compute_task_loss(task::NoTask, model::Nothing=nothing, x::Nothing=noth
     return 0.0  # No task, no meaningful loss
 end
 
+
+function punish_model_resetting!(bee::Bee, task::AbstractTask)
+    bee.brain = build_model(task)
+    return nothing
+end

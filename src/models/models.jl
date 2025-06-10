@@ -41,7 +41,7 @@ function build_model_linear()
     return Chain(Dense(1, 1))  # Simple linear regression: y = Wx + b
 end
 
-function build_classification_model(; input_size::AbstractVector{<:Integer}=DEFAULTS[:INPUT_SIZE], output_size::UInt16=DEFAULTS[:OUTPUT_SIZE])
+function build_classification_model(; input_size::AbstractVector{<:Integer}, output_size::UInt16)
 
     return Chain(
         # Convolutional Block 1
@@ -65,7 +65,7 @@ function build_classification_model(; input_size::AbstractVector{<:Integer}=DEFA
 end
 
 
-function build_model_5(; input_size::AbstractVector{<:Integer}=DEFAULTS[:INPUT_SIZE], output_size::UInt16=DEFAULTS[:OUTPUT_SIZE])
+function build_model_5(; input_size::AbstractVector{<:Integer}, output_size::UInt16)
 
     return Chain(
         # Convolutional Block 1

@@ -1,6 +1,4 @@
-
-
-function run_simulation(parsed_args::Dict{String, Any}; save_results::Bool = true, verbose::Bool = true, seed::Int = DEFAULTS["random_seed"])
+function run_simulation(parsed_args::Dict{String, Any}; save_data::Bool = true, verbose::Bool = true, seed::Int = DEFAULTS["random_seed"])
     # Set the random seed for reproducibility
     Random.seed!(seed)
     
@@ -16,6 +14,9 @@ function run_simulation(parsed_args::Dict{String, Any}; save_results::Bool = tru
     # Log start of simulation
     @info "Starting the simulation with parameters: $(parsed_args)"
 
+    # Initialize hive to nothing
+    hive = nothing
+
     try
         # Hive configuration and paths
         @info "Creating HiveConfig..."
@@ -29,14 +30,12 @@ function run_simulation(parsed_args::Dict{String, Any}; save_results::Bool = tru
 
         # Gillespie simulation (assuming it may take time)
         @info "Running Gillespie simulation..."
-        gillespie_simulation(hive)
+        gillespie_simulation!(hive, hive_paths, save_data=save_data)
 
         # Saving results (only if requested)
-        if save_results
-            @info "Saving simulation results..."
-            save_params(hive_config, hive_paths.raw_path)
-            save_data(hive_paths.raw_path, hive)
-            @info "Simulation data saved."
+        if save_data
+            #@info "Saving simulation data..."
+            @info "Simulation data saved. Path: $(hive_paths.raw_path)"
         end
 
         @info "Simulation completed successfully."

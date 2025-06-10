@@ -1,14 +1,14 @@
-abstract type Task end
+abstract type AbstractTask end
 
-struct RegressionTask <: Task end
-struct LinearRegressionTask <: Task end
+struct RegressionTask <: AbstractTask end
+struct LinearRegressionTask <: AbstractTask end
 
-struct ClassificationTask <: Task
+struct ClassificationTask <: AbstractTask
     input_size::AbstractVector{<:Integer}
     output_size::UInt16
 end
 
-struct NoTask <: Task end  # Placeholder for bees without tasks
+struct NoTask <: AbstractTask end  # Placeholder for bees without tasks
 
 
 

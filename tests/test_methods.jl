@@ -1,135 +1,136 @@
-##
-mo2 = build_cifar10_model()
-for epoch in 1:100
-    loss = train_model!(mo2, trainloader_cifar, learning_rate=0.0001)
-    accuracy = calc_accuracy(mo2, testloader_cifar)
-    println("Epoch = $(epoch) : Loss = $(loss) : Accuracy = $(accuracy)")
-    total_loss += loss
-end
-println("total loss = $(total_loss)")
-loss = train_model!(mo, trainloader)
-calc_accuracy(mo, testloader_mnist)
-calc_accuracy(mo, testloader_cifar)
-calc_accuracy(mo, testloader_fashion)
-calc_accuracy(mo, testloader_svhn)
-testloader_cifar == testloader_fashion
+using Test
+using Random
 
-##test logitcrossentropy
-loss_fn(y_hat, y) = Flux.logitcrossentropy(y_hat, y)
-loss_fn(y_model_mnist_train, y_mnist_train)
+# Import necessary modules
+include("../src/core/methods.jl")
+include("../src/core/definitions.jl")
+include("../src/core/queen_gene.jl")  # Assuming you've written tests for these methods too
 
-run_mnist_subset()
-
-
-
-## test export_data
-example1_nepoch = 1
-loss_history = reshape([1,2,3,4],:,1)
-n_ids=4
-col_name = "loss_history"
-accuracy_history = zeros(Float32, example1_nepoch)
-export_path = "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/test_export_data_function/"
-filename = "dummy_data.csv"
-mkpath(export_path)
-epoch_ids = collect(1:example1_nepoch)
-export_data(string(export_path, filename), loss_history, n_ids ,epoch_ids, col_name)
-
-
-svx, svy = prepare_svhn2_dataset_greyscale(:train)
-fashionx, fashiony  = prepare_fashionmnist_dataset_1_channel(:train)
-mnistx, mnisty = prepare_mnist_dataset_1_channel(:train, subset=10000)
-x_train, y_train = prepare_mnist_dataset_1_channel(:train)
-x_test, y_test = prepare_mnist_dataset_1_channel(:test)
-trainloader = Flux.DataLoader((x_train, y_train), batchsize=128, shuffle=true)
-testloader = Flux.DataLoader((x_test, y_test), batchsize=128, shuffle=true)
-test_hive = Hive(UInt16(5), UInt16(5))
-
-
-gillespie_testing(test_hive, trainloader=trainloader, testloader=testloader, n_epochs=5, lambda_Train=0, lambda_Interact=50)
-
-##test influence of changing one weight
-model = build_model_4()
-x_train, y_train = prepare_mnist_dataset_1_channel(:train)
-x_test, y_test = prepare_mnist_dataset_1_channel(:test)
-trainloader = Flux.DataLoader((x_train, y_train), batchsize=128, shuffle=true)
-testloader = Flux.DataLoader((x_test, y_test), batchsize=128, shuffle=true)
-train_model!(model, trainloader)
-weight1 = deepcopy(model[1].weight[1,1,1,1])
-weight2 = deepcopy(model[1].weight[1,1,1,2])
-weight3 = deepcopy(model[4].weight[1,1,1,1])
-weight4 = deepcopy(model[20].weight[1,1])
-weight5 = deepcopy(model[10].weight[1,1,1,1])
-
-
-
-current_acc = calc_accuracy(model, testloader)
-model[1].weight[1,1,1,1] = weight1
-model[1].weight[1,1,1,2] = weight2
-model[4].weight[1,1,1,1] = weight3
-model[20].weight[1,1] = weight4
-model[10].weight[1,1,1,1] = 3
-
-
-
-sin_traindata = create_sin_dataset(5, 1, 10000)
-sin_trainloader = Flux.DataLoader((sin_traindata[1], sin_traindata[2]), batchsize=128, shuffle=true)
-sin_testdata = create_sin_dataset(5, 1, 1000)
-sin_testloader = Flux.DataLoader((sin_testdata[1], sin_testdata[2]), batchsize=128, shuffle=true)
-sin_model = build_model_sin()
-
-init_acc = calc_regression_accuracy(sin_model, sin_testloader, atol=DEFAULTS[:ACCURACY_ATOL])
-for i in 1:30
-    train_regression_model!(sin_model, sin_trainloader)
-end
-new_acc = calc_regression_accuracy(sin_model, sin_testloader, atol=0.1)
-
-
-diff = sum(abs.(vec(sin_traindata[2]) .- vec(sin_model(sin_traindata[1]))))
-
-
-scatter(vec(sin_traindata[1]), vec(sin_traindata[2]))
-y_pred = sin_model(sin_traindata[1])
-scatter(vec(sin_traindata[1]), vec(y_pred))
-
-result = isapprox.(vec(sin_traindata[2]), vec(y_pred), atol=0.005)
-
-num_true = count(result)
-num_false = count(!, result)
-
-num_true/10000
-
-result_test = isapprox.(vec(sin_testdata[2]), vec(sin_model(sin_testdata[2])), atol=0.5)
-num_test_true = count(result_test)
-
-correct = 0
-total = 0
-for (xb, yb) in sin_testloader
-    test_pred = sin_model(xb)
-    batch_result = isapprox.(vec(yb), vec(test_pred), atol=0.005)
-    num_true_batch = count(batch_result)
-    correct += num_true_batch
-    total += length(yb)
+# Test compute_K_matrix
+@testset "compute_K_matrix" begin
+    queen_genes_list = [0.1, 0.3]
+    lambda_interact = 1000000
+    K_matrix = compute_K_matrix(queen_genes_list=queen_genes_list, lambda_interact=lambda_interact)
+    #@test size(K_matrix) == (I, 3)  # Check matrix size
+    @test K_matrix[1, 1] == 0.0    # Check diagonal elements are 0
+    println("K_matrix: ", K_matrix)
 end
 
-test_sin_data = create_sin_dataset(3, 2, 3000)
-sinx = vec(test_sin_data[1])
-siny = vec(test_sin_data[2])
-scatter(sinx, siny)
+# Test K_func
+@testset "K_func" begin
+    r_i = 0.5
+    r_j = 0.2
+    lambda = 100000000
+    result = K_func(r_i, r_j, lambda)
+    #@test result ≈ 0.5 * 0.6 * Flux.sigmoid(-lambda * (r_i - r_j))  # Check the formula
+    println("K_func result: ", result)
+end
+
+# Test choose_interaction function
+@testset "choose_interaction" begin
+    Random.seed!(43)  # For reproducibility
+    settings = create_arg_parse_settings()    
+    args = cparse_args(settings)
+    config = create_hive_config(args)
+    hive = Hive(config)
+    println("hive n bees: ", hive.config.n_bees)
+
+    K_matrix = compute_K_matrix(queen_genes_list=[bee.queen_gene for bee in hive.bee_list], lambda_interact=0.5)
+    println("K_matrix: ", K_matrix)
+    println("K_matrix_sum: ", sum(K_matrix))
+    chosen_bees_id = choose_interaction(hive.config.n_bees, K_matrix)
+    println("chosen_bees_id: ", chosen_bees_id)
+    @test chosen_bees_id isa Tuple
+    @test length(chosen_bees_id) == 2  # Check if two bees are chosen
+    @test all(1 <= id <= hive.config.n_bees for id in chosen_bees_id)  # Check if chosen IDs are valid
+    @test chosen_bees_id[1] != chosen_bees_id[2]  # Ensure two different bees are chosen
+end
+
+# Test Gillespie simulation behavior
+@testset "Gillespie simulation" begin
+
+    Random.seed!(43)  # For reproducibility
+    settings = create_arg_parse_settings(DEFAULTS)    
+    args = cparse_args(settings)
+    config = create_hive_config(args)
+    hive = Hive(config)
+    h_paths = create_hive_paths(config)
+    println(hive.epoch_index)
+    println("h paths: ", h_paths)
+
+    
+    """
+    # Mock functions like create_dataset, save_taskdata, etc., or create minimal mock versions
+    function create_dataset(task_type, task_config)
+        return ([], [], [], [])  # Return empty datasets for testing
+    end
+
+    function save_taskdata(path, train_data, test_data)
+        return nothing
+    end
+    """
+
+    # Mock the Gillespie simulation
+    gillespie_simulation!(hive, h_paths)
+
+    # Test after Gillespie simulation
+    @test hive.epoch_index > 0  # Ensure some epochs were completed
+    #@test all(isapprox(hive.queen_genes_history[:, epoch], hive.queen_genes_history[:, epoch-1], atol=1e-6) for epoch in 2:hive.epoch_index)
+end
 
 
-##
-sin_hive = Hive(UInt16(5), UInt16(5))
-sin_traindata = create_sin_dataset(5, 1, 10000)
-sin_trainloader = Flux.DataLoader((sin_traindata[1], sin_traindata[2]), batchsize=128, shuffle=true)
-sin_testdata = create_sin_dataset(5, 1, 1000)
-sin_testloader = Flux.DataLoader((sin_testdata[1], sin_testdata[2]), batchsize=128, shuffle=true)
-gillespie_regression!(sin_hive, n_epochs=UInt16(5), trainloader=sin_trainloader, testloader=sin_testloader)
+Random.seed!(43)  # For reproducibility
+const custom = Dict(
+    :parent_dataset_name => "testing",
+    :task_type => :regression,
+    :queen_gene_method => :accuracy,
+    :n_bees => UInt16(4),
+    :n_epochs => UInt16(3000),
+    :n_steps_per_epoch => 1,
+    :learning_rate => Float16(0.00003),
+    :punish_rate => Float32(0.0000001),
+    :lambda_train => Float16(0.005),
+    :lambda_interact => Float16(5),
+    :accuracy_sigma => Float16(0.1),
+    :random_seed => 1,
+    :trainset_size => 10000,
+    :testset_size => 1000,
+    :initial_queen_gene => Float64(0.5),
+
+    # regression defaults
+    :regression_n_peaks => 5,
+    :regression_which_peak => 1
+)
+
+settings = create_arg_parse_settings(custom)    
+args = cparse_args(settings)
+config = create_hive_config(args)
+hive = Hive(config)
+h_paths = create_hive_paths(config)
+traind, testd, trainl, testl = gillespie_simulation!(hive, h_paths)
+acc_fig = plot_hive_history(hive.accuracy_history, title="Accuracy History", xlabel="Epochs", ylabel="Accuracy")
+acc_fig
+fig_path = joinpath("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_images", config.parent_dataset_name, config.dataset_name)
+home_path = joinpath("expanduser("~"), /nethive_images", config.parent_dataset_name, config.dataset_name)
+mkpath(fig_path)
+mkpath(home_path)
+save(joinpath(home_path, "accuracy_history.svg"), acc_fig)
+save(joinpath(fig_path, "accuracy_history.svg"), acc_fig)
+save_simulation_params(config, h_paths.raw_path)
+plot_hive_history(hive.queen_genes_history)
+plot_hive_history(hive.loss_history)
+plot_hive_history(hive.n_train_history)
+plot_hive_history(hive.n_dominant_history)
+plot_hive_history(hive.n_subdominant_history)
+plot_dataset(hive.propensity_ratio_history)
 
 
-run_regression(n_bees=UInt16(5), n_epochs=UInt16(40), n_peaks=5, which_peak=1, trainsetsize=10000, testsetsize=1000)
+plot_dataset(traind)
+plot_bee_prediction(hive.bee_list[1].brain, traind[1])
+traind
+hive.bee_list[1].brain(traind[1])
 
-sinmodel = build_model_sin()
-train_regression_model!(sinmodel)
-punish_regression_model!(sinmodel, sin_trainloader, 0.005)
-
-run_testing_first_bee(n_bees=UInt16(5), n_epochs=UInt16(40), n_peaks= 5, which_peak=1, trainsetsize=10000, testsetsize=1000)
+x = LinRange(-50, 50, 100)
+l = 0.05
+y = Flux.sigmoid.(l*x)
+plot_dataset([x, y])
