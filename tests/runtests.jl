@@ -43,12 +43,13 @@ include("../src/simulation.jl")
 # include("test_simulation.jl")
 
 
+"""
 const custom = Dict(
     :parent_dataset_name => "testing",
-    :task_type => :regression,
+    :task_type => :custom_classification,
     :queen_gene_method => :accuracy,
-    :n_bees => UInt16(3),
-    :n_epochs => UInt16(1500),
+    :n_bees => UInt16(1),
+    :n_epochs => UInt16(150),
     :n_steps_per_epoch => 1,
     :learning_rate => Float16(0.00001),
     :punish_rate => Float32(0.00001),
@@ -56,13 +57,22 @@ const custom = Dict(
     :lambda_interact => Float16(5),
     :accuracy_sigma => Float16(0.1),
     :random_seed => 2,
-    :trainset_size => 10000,
-    :testset_size => 1000,
+    :trainset_size => 10,
+    :testset_size => 10,
     :initial_queen_gene => Float64(0.0),
+    :save_nn_epochs => 0,
 
     # regression defaults
     :regression_n_peaks => 5,
-    :regression_which_peak => 1
+    :regression_which_peak => 1,
+    
+    #custom classification
+    :n_classes => 10, 
+    :features_dimension => 10,
+    :n_per_class_train => 1000,
+    :n_per_class_test => 100,
+    :class_center_radius => Float64(5.0),
+    :sampling_gauss_sigma => Float64(1.0)
 )
 
 
@@ -99,4 +109,6 @@ interaction_sum_fig = plot_dataset(interaction_sum, title="Interaction History",
 qg_dummy = [10, 1, 0.1]
 lambda_interact_dummy = 5
 mat = compute_K_matrix(queen_genes_list = qg_dummy, lambda_interact=lambda_interact_dummy)
+
+
 """

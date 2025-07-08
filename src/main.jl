@@ -7,7 +7,7 @@ exec julia --optimize=3 --threads=4 "${BASH_SOURCE[0]}" "$@"
 import Pkg
 using Pkg
 Pkg.activate("/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_project/env_nethive/")
-Pkg.instantiate()
+#Pkg.instantiate()
 
 print(string("Current working dir: ", pwd(), "\n"))
 

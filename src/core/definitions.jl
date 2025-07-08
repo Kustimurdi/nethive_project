@@ -2,7 +2,7 @@ struct HiveConfig
     dataset_name::String
     parent_dataset_name::String
     n_bees::UInt16
-    n_epochs::UInt16
+    n_epochs::UInt64
     n_steps_per_epoch::UInt16
     learning_rate::Float32
     punish_rate::Float32
@@ -19,7 +19,7 @@ struct HiveConfig
     function HiveConfig(dataset_name::String, 
                         parent_dataset_name::String,
                         n_bees::UInt16, 
-                        n_epochs::UInt16,
+                        n_epochs::UInt64,
                         n_steps_per_epoch::UInt16,
                         learning_rate::Float32,
                         punish_rate::Float32,
@@ -85,7 +85,7 @@ function create_hive_config(args)
         dataset_name,
         args["parent_dataset_name"],
         UInt16(args["n_bees"]),
-        UInt16(args["n_epochs"]),
+        UInt64(args["n_epochs"]),
         UInt16(args["n_steps_per_epoch"]),
         Float32(args["learning_rate"]),
         Float32(args["punish_rate"]),
@@ -111,8 +111,8 @@ mutable struct Bee
     brain::Flux.Chain
     queen_gene::Float64
 
-    function Bee(id::Integer, task::AbstractTask, queen_gene::Float64 = 0.0)
-        brain_model = build_model(task)
+    function Bee(id::Integer, task_config::AbstractTaskConfig, queen_gene::Float64 = 0.0)
+        brain_model = build_model(task_config)
         return new(id, brain_model, queen_gene)
     end
 end
@@ -130,12 +130,14 @@ mutable struct Hive
     subdominant_rate_history::Matrix{Float64}
     dominant_rate_history::Matrix{Float64}
     propensity_ratio_history::Vector{Float64}
+    interaction_log::Vector{Vector{Tuple{Int, Int}}}
     epoch_index::UInt
 
     function Hive(config::HiveConfig)
         task = get_task_instance(config.task_type)
         # Create a list of bees dynamically based on the number of bees from the config
-        bee_list = [Bee(UInt16(i), task, config.initial_queen_gene) for i in 1:config.n_bees]
+        bee_list = [Bee(UInt16(i), config.task_config, config.initial_queen_gene) for i in 1:config.n_bees]
+        interaction_log = [Vector{Tuple{Int, Int}}() for _ in 1:config.n_epochs]
         
         # Return a new Hive object using the config object
         return new(config,
@@ -149,6 +151,7 @@ mutable struct Hive
                 fill(-1.0, config.n_bees, config.n_epochs),  # subdominant rate history
                 fill(-1.0, config.n_bees, config.n_epochs),  # dominant rate history
                 fill(-1.0, config.n_epochs),  # propensity ratio history
+                interaction_log,
                 UInt(0)  # epoch index
         )
     end
@@ -164,7 +167,7 @@ end
 
 
 function create_hive_paths(config::HiveConfig)
-    base_path = "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/raw/"
+    base_path = "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/"
     dataset_path = joinpath(base_path, config.parent_dataset_name, config.dataset_name)
     #simulation_config_folder_name = "lr_$(config.learning_rate)_pr_$(config.punish_rate)_lt_$(config.lambda_train)_li_$(config.lambda_interact)_as_$(config.accuracy_sigma)"
     #dataset_path = joinpath(base_path, config.parent_dataset_name, simulation_config_folder_name, config.dataset_name)

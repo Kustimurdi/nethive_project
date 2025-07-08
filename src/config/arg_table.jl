@@ -23,7 +23,7 @@ function create_arg_parse_settings(defaults::Dict{Symbol, Any} = DEFAULTS)
         nargs = 'A'
         "--n_epochs"
         help = "Number of epochs to train"
-        arg_type = UInt16
+        arg_type = UInt64
         default = defaults[:n_epochs]
         nargs = 'A'
         "--n_steps_per_epoch"
@@ -90,6 +90,36 @@ function create_arg_parse_settings(defaults::Dict{Symbol, Any} = DEFAULTS)
         help = "The epoch steps at which the neural networks get saved"
         arg_type = Int
         default = defaults[:save_nn_epochs]
+        nargs = 'A'
+        "--features_dimension"
+        help = "The dimension of the vectors holding the features of the synthetic data for the custom classification task"
+        arg_type = Int
+        default = defaults[:features_dimension]
+        nargs = 'A'
+        "--n_classes"
+        help = "The number of classes for the custom classification task"
+        arg_type = Int
+        default = defaults[:n_classes]
+        nargs = 'A'
+        "--n_per_class_train"
+        help = "The number of samples per class for the custom classification task for the training set"
+        arg_type = Int
+        default = defaults[:n_per_class_train]
+        nargs = 'A'
+        "--n_per_class_test"
+        help = "The number of samples per class for the custom classification task for the testing set"
+        arg_type = Int
+        default = defaults[:n_per_class_test]
+        nargs = 'A'
+        "--class_center_radius"
+        help = "The scaling factor for the vectors holding the center of the classes for the custom classification task"
+        arg_type = Float64
+        default = defaults[:class_center_radius]
+        nargs = 'A'
+        "--sampling_gauss_sigma"
+        help = "The sigma for the gaussian distribution from which the samples for the custom classification task will be drawn"
+        arg_type = Float64
+        default = defaults[:sampling_gauss_sigma]
         nargs = 'A'
     end
     

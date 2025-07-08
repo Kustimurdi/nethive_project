@@ -21,8 +21,12 @@ include("../src/config/defaults.jl")  # For DEFAULTS
     @test model isa Chain
     @test size(model(rand(Float32, 1, 10))) == (1, 10)
 
+    model = build_custom_classification_model(10, 5)
+    @test model isa Chain
+
     # Dispatch tests
     @test build_model(RegressionTask()) isa Chain
     @test build_model(LinearRegressionTask()) isa Chain
+    @test build_model(CustomClassificationTask()) isa Chain
     @test build_model(NoTask()) isa Chain
 end

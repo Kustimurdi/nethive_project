@@ -86,6 +86,19 @@ function calc_accuracy_labels(model, dataloader; n_labels=10, num_batches::Int=t
     return correct / total
 end
 
+function calc_accuracy_one_cold(model, dataloader; num_batches::Int=typemax(Int))
+    correct = 0
+    total = 0
+    for (x_batch, y_batch) in Iterators.take(dataloader, num_batches)
+        preds = Flux.onecold(model(x_batch))
+        truths = Flux.onecold(y_batch)
+        correct += sum(preds .== truths)
+        total += length(truths)
+    end
+    return correct / total
+end
+
+
 function calc_accuracy(model, dataloader, task::AbstractTask; acc_sigma=1.0, num_batches::Int=typemax(Int))
     if task isa RegressionTask || task isa LinearRegressionTask
         return calc_gaussian_regression_accuracy(model, dataloader, sigma=acc_sigma, num_batches=num_batches)
@@ -93,6 +106,9 @@ function calc_accuracy(model, dataloader, task::AbstractTask; acc_sigma=1.0, num
     elseif task isa ClassificationTask
         return calc_accuracy_labels(model, dataloader, n_labels=task.output_size, num_batches=num_batches)
     
+    elseif task isa CustomClassificationTask
+        return calc_accuracy_one_cold(model, dataloader, num_batches=num_batches)
+
     elseif task isa NoTask
         return 0.0  # No task, no meaningful accuracy
 
@@ -127,12 +143,16 @@ function compute_task_loss(::ClassificationTask, model, x, y)
     return Flux.Losses.crossentropy(model(x), y)  # One-hot encoded classification
 end
 
+function compute_task_loss(::CustomClassificationTask, model, x, y)
+    return Flux.Losses.logitcrossentropy(model(x), y) # Already applies softmax
+end
+
 function compute_task_loss(task::NoTask, model::Nothing=nothing, x::Nothing=nothing, y::Nothing=nothing)
     return 0.0  # No task, no meaningful loss
 end
 
 
-function punish_model_resetting!(bee::Bee, task::AbstractTask)
-    bee.brain = build_model(task)
+function punish_model_resetting!(bee::Bee, task_config::AbstractTaskConfig)
+    bee.brain = build_model(task_config)
     return nothing
 end

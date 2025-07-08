@@ -3,7 +3,7 @@ const DEFAULTS = Dict(
     :task_type => :regression,
     :queen_gene_method => :accuracy,
     :n_bees => UInt16(4),
-    :n_epochs => UInt16(2000),
+    :n_epochs => UInt64(2000),
     :n_steps_per_epoch => 1,
     :learning_rate => Float32(0.00003),
     :punish_rate => Float32(0.0000001),
@@ -20,7 +20,16 @@ const DEFAULTS = Dict(
     :regression_n_peaks => 5,
     :regression_which_peak => 1,
 
+    #custom classification task defaults
+    :n_classes => 5, 
+    :features_dimension => 10,
+    :n_per_class_train => 1000,
+    :n_per_class_test => 100,
+    :class_center_radius => Float64(5.0),
+    :sampling_gauss_sigma => Float64(1.0),
+
     #QueenGeneIncremental defaults
     :queen_gene_incremental_rate => 0.3,
     :queen_gene_decremental_rate => 0.3
+
 )

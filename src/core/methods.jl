@@ -92,6 +92,7 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
                 # Train a bee
                 selected_bee = h.bee_list[rand(1:h.config.n_bees) ]
                 loss = train_model!(selected_bee.brain, trainloader, task_type_struct, learning_rate=h.config.learning_rate)
+                println("loss=", loss, " : epoch=", h.epoch_index)
                 h.loss_history[selected_bee.id, epoch] += loss
 
                 # Calculate the new queen gene
@@ -103,7 +104,6 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
                     new_queen_gene = 0
                 end
                 selected_bee.queen_gene = new_queen_gene
-
                 h.n_train_history[selected_bee.id, epoch] += 1
 
                 n_train +=1
@@ -113,7 +113,7 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
 
                 # Apply the interaction and update the queen gene
                 #punish_model!(sub_bee.brain, trainloader, task_type_struct, punish_rate=h.config.punish_rate)
-                punish_model_resetting!(sub_bee, task_type_struct)
+                punish_model_resetting!(sub_bee, h.config.task_config)
                 new_queen_gene = compute_queen_gene(sub_bee, queen_gene_method_struct, testloader, task_type_struct, h.config.accuracy_sigma)
                 if queen_gene_method_struct isa QueenGeneIncremental
                     new_queen_gene = sub_bee.queen_gene - queen_gene_method_struct.decrement_value
@@ -124,6 +124,7 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
                 old_queen_gene = sub_bee.queen_gene
                 sub_bee.queen_gene = new_queen_gene
 
+                push!(h.interaction_log[epoch], (sub_bee_id, dom_bee_id))
                 h.n_subdominant_history[sub_bee.id, epoch] += 1
                 h.n_dominant_history[dom_bee.id, epoch] +=1
 
@@ -140,13 +141,26 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
         end
         h.epoch_index+=1
 
+        """
+        if h.epoch_index%3000==0
+            println("task type struct: ", task_type_struct)
+            first_bee = h.bee_list[1] 
+            punish_model_resetting!(first_bee, task_type_struct)
+            h.n_subdominant_history[1, epoch] =+1
+        end
+        """
+
         # Calculate the accuracy for each bee
         for bee in h.bee_list
             h.accuracy_history[bee.id, epoch+1] = calc_accuracy(bee.brain, testloader, task_type_struct, acc_sigma=h.config.accuracy_sigma)
             h.dominant_rate_history[bee.id, epoch] = sum(K_matrix[:, bee.id])
             h.subdominant_rate_history[bee.id, epoch] = sum(K_matrix[bee.id, :])
+            #if h.n_train_history[bee.id, epoch] != 0
+            #    h.loss_history[bee.id, epoch] = h.loss_history[bee.id, epoch] / h.n_train_history[bee.id, epoch]
+            #end
         end
 
+        h.loss_history[:, epoch] .= ifelse.(h.n_train_history[:, epoch] .!= 0, h.loss_history[:, epoch] ./ h.n_train_history[:, epoch], h.loss_history[:, epoch])
         h.propensity_ratio_history[epoch] = propensity_ratio
 
         # Save the queen genes
@@ -166,7 +180,7 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
     if save_data
         save_taskdata(h_paths.raw_taskdata_path, train_data, test_data)
         save_simulation_params(h.config, h_paths.raw_path)
-        save_results(h_paths.raw_path, h)
+        save_results(joinpath(h_paths.raw_path, "raw"), h)
     end
     @info "Gillespie simulation is over. " total_elapsed_time=total_elapsed_time n_actions=n_actions n_train=n_train n_interact=n_interact
     println("queen gene struct: ", queen_gene_method_struct)
@@ -193,7 +207,20 @@ function save_results(raw_path::String, h::Hive)
     end
     vector_to_dataframe(joinpath(raw_path, "propensity_ratio.csv"), h.propensity_ratio_history, :propensity_ratio)
 
+    export_interaction_log(raw_path, h.interaction_log)
+
     return 0
+end
+
+function export_interaction_log(raw_path::String, interaction_log)
+    rows = []
+    for (epoch, events) in enumerate(interaction_log)
+        for (sub, dom) in events
+            push!(rows, (epoch=epoch, dominant=dom, subdominant=sub))
+        end
+    end
+    df = DataFrame(rows)
+    CSV.write(joinpath(raw_path, "interaction_log.csv"), df)
 end
 
 function save_nn_state(raw_net_path::String, h::Hive, filename_prefix::String = "epoch_")

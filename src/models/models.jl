@@ -1,16 +1,21 @@
-function build_model(::RegressionTask)
-    return build_model_sin_leaky()
+function build_model(::RegressionTaskConfig)
+    #return build_model_sin_leaky()
+    return build_model_sin_leaky_bigger()
 end
 
-function build_model(::LinearRegressionTask)
+function build_model(::LinearRegressionTaskConfig)
     return build_model_linear()
 end
 
-function build_model(task::ClassificationTask)
-    return build_classification_model(input_size=task.input_size, output_size=task.output_size)
+function build_model(task_config::ClassificationTaskConfig)
+    return build_classification_model(input_size=task_config.input_size, output_size=task_config.output_size)
 end
 
-function build_model(::NoTask)
+function build_model(task_config::CustomClassificationTaskConfig)
+    return build_custom_classification_model(task_config.features_dimension, task_config.n_classes)
+end
+
+function build_model(::NoTaskConfig)
     return Flux.Chain()  # Empty model
 end
 
@@ -20,6 +25,14 @@ the function @build_brain creates the neural networks for the @Bee objects (the 
     neural networks and various other pieces of important information concerning the simulation) of the @Hive
     At the moment the used NN architecture is a CNN with two CNN layers and two FNN layers.
 """
+
+function build_custom_classification_model(input_dim::Int, output_dim::Int)
+    return Chain(
+        Dense(input_dim, 32, relu),
+        Dense(32, 32, relu),
+        Dense(32, output_dim)
+    )
+end
 
 function build_model_sin()
     return Chain(
@@ -34,6 +47,60 @@ function build_model_sin_leaky()
         Dense(1, 16, leakyrelu; init=Flux.glorot_normal),
         Dense(16, 16, leakyrelu; init=Flux.glorot_normal),
         Dense(16, 1; init=Flux.glorot_normal)
+    )
+end
+
+function build_model_sin_leaky_bigger()
+    return Chain(
+        Dense(1, 16, leakyrelu; init=Flux.glorot_normal),
+        Dense(16, 32, leakyrelu; init=Flux.glorot_normal),
+        Dense(32, 16, leakyrelu; init=Flux.glorot_normal),
+        Dense(16, 1; init=Flux.glorot_normal)
+    )
+end
+
+function build_model_sin_leaky_even_bigger()
+    return Chain(
+        Dense(1, 16, leakyrelu; init=Flux.glorot_normal),
+        Dense(16, 32, leakyrelu; init=Flux.glorot_normal),
+        Dense(32, 64, leakyrelu; init=Flux.glorot_normal),
+        Dense(64, 32, leakyrelu; init=Flux.glorot_normal),
+        Dense(32, 16, leakyrelu; init=Flux.glorot_normal),
+        Dense(16, 1; init=Flux.glorot_normal)
+    )
+end
+
+
+function build_model_sin_leaky_glorot_uniform()
+    return Chain(
+        Dense(1, 16, leakyrelu; init=Flux.glorot_uniform),
+        Dense(16, 16, leakyrelu; init=Flux.glorot_uniform),
+        Dense(16, 1; init=Flux.glorot_uniform)
+    )
+end
+
+function build_model_sin_leaky_kaiming_uniform()
+    println("kaiming uniform leaky")
+    return Chain(
+        Dense(1, 16, leakyrelu; init=Flux.kaiming_uniform),
+        Dense(16, 16, leakyrelu; init=Flux.kaiming_uniform),
+        Dense(16, 1; init=Flux.kaiming_uniform)
+    )
+end
+
+function build_model_sin_leaky_kaiming_normal()
+    return Chain(
+        Dense(1, 16, leakyrelu; init=Flux.kaiming_normal),
+        Dense(16, 16, leakyrelu; init=Flux.kaiming_normal),
+        Dense(16, 1; init=Flux.kaiming_normal)
+    )
+end
+
+function build_model_sin_relu_kaiming_normal()
+    return Chain(
+        Dense(1, 16, relu; init=Flux.kaiming_normal),
+        Dense(16, 16, relu; init=Flux.kaiming_normal),
+        Dense(16, 1; init=Flux.kaiming_normal)
     )
 end
 

@@ -31,6 +31,19 @@ end
         cfg = TaskConfig(args)
         @test cfg isa RegressionTaskConfig
     end
+    @testset "TaskConfig creation - custom args - custom classification task" begin
+        args = Dict(
+            "task_type" => :custom_classification,
+            "features_dimension" => 5,
+            "n_classes" => 3,
+            "n_per_class_train" => 10,
+            "n_per_class_test" => 10,
+            "class_center_radius" => 1.0,
+            "sampling_gauss_sigma" => 20.0
+        )
+        cfg = TaskConfig(args)
+        @test cfg isa CustomClassificationTaskConfig
+    end
     @testset "TaskConfig creation - parsed args" begin
         settings = create_arg_parse_settings()
         args = cparse_args(settings)
@@ -77,9 +90,13 @@ end
         @test isnothing(train_data)
         @test isnothing(test_data)
     end
-    @testset "Classification dataset creation" begin
-        cfg = ClassificationTaskConfig(10, [0.1, 0.2, 0.3, 0.4])
-        @test_throws ArgumentError create_dataset(ClassificationTask([28, 28], 10), cfg)
+    @testset "Custom Classification dataset creation" begin
+        cfg = CustomClassificationTaskConfig(5, 3, 10, 10, 1.0, 5.0)
+        train_loader, test_loader, train_data, test_data = create_dataset(CustomClassificationTask(), cfg)
+        @test size(train_data[1]) == (1, 128)
+        @test size(train_data[2]) == (1, 128)
+        @test size(test_data[1]) == (1, 64)
+        @test size(test_data[2]) == (1, 64)
     end
 end
 
@@ -159,3 +176,84 @@ acc = calc_accuracy(model, test_loader, NoTask())
 loss = calc_loss(model, test_loader, NoTask())
 println("Initial accuracy: ", acc)
 println("Initial loss: ", loss)
+
+
+
+### test custom classification
+
+Random.seed!(1)
+acc_vector = Float64[]
+epoch_acc_vector = Float64[]
+loss_vector = Float64[]
+epoch_loss_vector = Float64[]
+n_classes = 5
+features_dimension = 10
+n_per_class_train = 100
+n_per_class_test = 100
+cfg = CustomClassificationTaskConfig(features_dimension, n_classes, n_per_class_train, n_per_class_test, 5.0, 1.0)
+train_loader, test_loader, train_data, test_data = create_dataset(CustomClassificationTask(), cfg, batchsize=128)
+model = build_model(cfg)
+#this_loss(x, y) = Flux.logitcrossentropy(model(x), y)
+this_loss(x,y) = compute_task_loss(CustomClassificationTask(), model, x, y)
+learning_rate = 0.001
+opt = Descent(learning_rate)
+init_acc = calc_accuracy_one_cold(model, test_loader)
+for epoch in 1:200
+    """
+    count = 0
+    full_loss = 0
+    acc = 0
+    for (xbatch, ybatch) in train_loader
+        count += 1
+        Flux.train!(this_loss, Flux.params(model), [(xbatch, ybatch)], opt)
+        loss = this_loss(xbatch, ybatch)
+        full_loss += loss
+        acc = calc_accuracy_one_cold(model, test_loader)
+        push!(acc_vector, acc)
+        push!(loss_vector, loss)
+    end
+    """
+    epoch_loss = train_model!(model, train_loader, CustomClassificationTask(), learning_rate=learning_rate)
+    acc = calc_accuracy_one_cold(model, test_loader)
+    
+    #@info avg_loss=full_loss/count epoch_acc=acc
+    #println("avg loss: ", full_loss/count)
+    #epoch_loss = full_loss/count
+    println("acc: ", acc)
+    push!(epoch_loss_vector, epoch_loss)
+    push!(epoch_acc_vector, acc)
+
+end
+
+fig = Figure(resolution = (800, 4*300))
+
+ax1 = Makie.Axis(fig[1,1], title="acc")
+ax2 = Makie.Axis(fig[2,1], title="loss")
+ax3 = Makie.Axis(fig[3,1], title="epoch_acc")
+ax4 = Makie.Axis(fig[4,1], title="epoch_loss")
+indices = collect(1:length(acc_vector))
+indices_epoch = collect(1:length(epoch_acc_vector))
+Makie.scatter!(ax1, indices, acc_vector, markersize=4)
+Makie.scatter!(ax2, indices, loss_vector, markersize=4)
+Makie.scatter!(ax3, indices_epoch, epoch_acc_vector, markersize=4)
+Makie.scatter!(ax4, indices_epoch, epoch_loss_vector, markersize=4)
+
+fig
+
+
+
+train_data[1]#[:,1]
+train_data[2]
+preds = model(train_data[1])
+train_data[2]
+train_data[2]
+Flux.onehotbatch(train_data[2], 1:cfg.n_classes)
+Flux.onecold(preds)
+acc = calc_accuracy(model, test_loader, CustomClassificationTask())
+
+
+vector = rand(5)
+model([1.0, 0.0, 0.0, 0.0, 0.0])
+model = Chain(Dense(5, 32))
+
+preds = model(vector)

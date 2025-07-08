@@ -1,6 +1,4 @@
 using Revise
-using Makie
-using CairoMakie
 using Plots
 using LinearAlgebra
 using Random
