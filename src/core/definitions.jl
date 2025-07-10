@@ -6,7 +6,7 @@ struct HiveConfig
     n_steps_per_epoch::UInt16
     learning_rate::Float32
     punish_rate::Float32
-    lambda_train::Float64
+    training_propensity::Float64
     lambda_interact::Float16
     accuracy_sigma::Float16
     random_seed::Int
@@ -23,7 +23,7 @@ struct HiveConfig
                         n_steps_per_epoch::UInt16,
                         learning_rate::Float32,
                         punish_rate::Float32,
-                        lambda_train::Float64,
+                        training_propensity::Float64,
                         lambda_interact::Float16,
                         accuracy_sigma::Float16,
                         random_seed::Int,
@@ -47,7 +47,7 @@ struct HiveConfig
         if punish_rate <= 0
             throw(ArgumentError("Punish rate must be positive"))
         end
-        if lambda_train <= 0 || lambda_interact <= 0
+        if training_propensity <= 0 || lambda_interact <= 0
             throw(ArgumentError("Lambda values must be positive"))
         end
         if accuracy_sigma <= 0
@@ -61,7 +61,7 @@ struct HiveConfig
                 n_steps_per_epoch,
                 learning_rate, 
                 punish_rate, 
-                lambda_train, 
+                training_propensity, 
                 lambda_interact, 
                 accuracy_sigma,
                 random_seed,
@@ -89,7 +89,7 @@ function create_hive_config(args)
         UInt16(args["n_steps_per_epoch"]),
         Float32(args["learning_rate"]),
         Float32(args["punish_rate"]),
-        Float64(args["lambda_train"]),
+        Float64(args["training_propensity"]),
         Float16(args["lambda_interact"]),
         Float16(args["accuracy_sigma"]),
         args["random_seed"],
@@ -169,7 +169,7 @@ end
 function create_hive_paths(config::HiveConfig)
     base_path = "/scratch/n/N.Pfaffenzeller/nikolas_nethive/nethive_data/"
     dataset_path = joinpath(base_path, config.parent_dataset_name, config.dataset_name)
-    #simulation_config_folder_name = "lr_$(config.learning_rate)_pr_$(config.punish_rate)_lt_$(config.lambda_train)_li_$(config.lambda_interact)_as_$(config.accuracy_sigma)"
+    #simulation_config_folder_name = "lr_$(config.learning_rate)_pr_$(config.punish_rate)_lt_$(config.training_propensity)_li_$(config.lambda_interact)_as_$(config.accuracy_sigma)"
     #dataset_path = joinpath(base_path, config.parent_dataset_name, simulation_config_folder_name, config.dataset_name)
 
     return HivePaths(

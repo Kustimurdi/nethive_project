@@ -2,20 +2,20 @@
 set -euo pipefail
 echo "script started"
 
-#parent_dataset_name="custom_classification_realizations"
-parent_dataset_name="custom_classification_testsweep"
+parent_dataset_name="custom_classification_realizations"
+#parent_dataset_name="custom_classification_dominance_analysis"
 
 task="custom_classification"
 qg_method="accuracy"
-n_epochs=1000
+n_epochs=10000
 n_steps_per_epoch=5
 n_bees=3
 
 #learning_rates=(0.000001 0.00001 0.0001)
 learning_rates=(0.001)
 punish_rates=(0.001)
-lambda_trains=(5)
-lambda_interacts=(10)
+training_propensity=(5)
+lambda_interacts=(1)
 random_seeds=(1)
 
 features_dimensions=(10)
@@ -27,7 +27,7 @@ class_center_radii=(5.0)
 
 for lr in "${learning_rates[@]}"; do
     for pr in "${punish_rates[@]}"; do
-        for lt in "${lambda_trains[@]}"; do
+        for tp in "${training_propensity[@]}"; do
             for li in "${lambda_interacts[@]}"; do
                 for rs in "${random_seeds[@]}"; do
                     for fd in "${features_dimensions[@]}"; do
@@ -46,7 +46,7 @@ for lr in "${learning_rates[@]}"; do
                                                 --n_steps_per_epoch=$n_steps_per_epoch \
                                                 --learning_rate=$lr \
                                                 --punish_rate=$pr \
-                                                --lambda_train=$lt \
+                                                --training_propensity=$tp \
                                                 --lambda_interact=$li \
                                                 --random_seed=$rs \
                                                 --features_dimension=$fd \

@@ -73,7 +73,7 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
             loop_start_time = time()
 
             # Calculate the interaction propensity for the current epoch
-            a_train = h.config.lambda_train * h.config.n_bees 
+            a_train = h.config.training_propensity * h.config.n_bees 
             K_matrix = compute_K_matrix(queen_genes_list=queen_genes_vector, lambda_interact=h.config.lambda_interact)
             a_interact = sum(K_matrix)
 
@@ -92,7 +92,6 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
                 # Train a bee
                 selected_bee = h.bee_list[rand(1:h.config.n_bees) ]
                 loss = train_model!(selected_bee.brain, trainloader, task_type_struct, learning_rate=h.config.learning_rate)
-                println("loss=", loss, " : epoch=", h.epoch_index)
                 h.loss_history[selected_bee.id, epoch] += loss
 
                 # Calculate the new queen gene

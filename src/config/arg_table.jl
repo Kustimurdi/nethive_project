@@ -41,10 +41,10 @@ function create_arg_parse_settings(defaults::Dict{Symbol, Any} = DEFAULTS)
         arg_type = Float32
         default = defaults[:punish_rate]
         nargs = 'A'
-        "--lambda_train"
+        "--training_propensity"
         help = "The rate at which each individual neural networks will train"
         arg_type = Float64
-        default = defaults[:lambda_train]
+        default = defaults[:training_propensity]
         nargs = 'A'
         "--lambda_interact"
         help = "The exponent prefactor of the inverse sigmoid function of the interaction rate"
