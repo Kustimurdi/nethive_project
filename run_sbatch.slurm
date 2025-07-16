@@ -5,7 +5,7 @@
 #SBATCH --time=03:00:00
 #SBATCH --mem-per-cpu=2GB
 #SBATCH --cpus-per-task=1
-#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=ge69mer@mytum.de
 #SBATCH --export=all
 #SBATCH --partition=th-ws
