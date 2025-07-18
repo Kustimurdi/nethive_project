@@ -1,4 +1,3 @@
-
 """
 the function @compute_K_matrix calculates the interaction propensities for all pairs of @Bee objects in accordance to the interaction rate stated in the wasp paper 
 paramteres: 
@@ -178,7 +177,7 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
     # Save data
     if save_data
         save_taskdata(h_paths.raw_taskdata_path, train_data, test_data)
-        save_simulation_params(h.config, h_paths.raw_path)
+        save_simulation_params_wide(h.config, h_paths.raw_path)
         save_results(joinpath(h_paths.raw_path, "raw"), h)
     end
     @info "Gillespie simulation is over. " total_elapsed_time=total_elapsed_time n_actions=n_actions n_train=n_train n_interact=n_interact
@@ -307,6 +306,31 @@ function save_simulation_params(config::HiveConfig, raw_path::String)
 
     # Create DataFrame with correct column names
     df = DataFrame(rows, [:id, :parameter, :value])
+
+    # Save to CSV
+    CSV.write(joinpath(raw_path, "parameters.csv"), df, writeheader=true)
+    return 0
+end
+
+function save_simulation_params_wide(config::HiveConfig, raw_path::String)
+    mkpath(raw_path)
+    println("Data path: ", raw_path)
+
+    # Collect fields from the main config and task config
+    params = Dict(string(field) => getfield(config, field) for field in fieldnames(HiveConfig))
+    task_params = Dict(string(field) => getfield(config.task_config, field) for field in fieldnames(typeof(config.task_config)))
+    all_params = merge(params, task_params)
+
+    # Add metadata (as Strings for clarity)
+    metadata = Dict(
+        "git_branch" => string(get_git_branch()),
+        "git_commit_id" => string(get_git_commit())
+    )
+    all_params = merge(all_params, metadata)
+    pop!(all_params, "task_config", nothing)
+
+    # Create DataFrame in wide format (each parameter is a column)
+    df = DataFrame(all_params; copycols=true)
 
     # Save to CSV
     CSV.write(joinpath(raw_path, "parameters.csv"), df, writeheader=true)

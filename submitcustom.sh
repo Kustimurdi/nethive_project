@@ -2,23 +2,24 @@
 set -euo pipefail
 echo "script started"
 
-parent_dataset_name="custom_classification_lambda_interaction_sweep"
-#parent_dataset_name="custom_classification_dominance_analysis"
+#parent_dataset_name="custom_classification_training_propensity_sweep"
+parent_dataset_name="custom_classification_testing"
 
 task="custom_classification"
 qg_method="accuracy"
-n_epochs=10000
+n_epochs=1
 n_steps_per_epoch=5
 n_bees=100
 
 #learning_rates=(0.000001 0.00001 0.0001)
 learning_rates=(0.001)
 punish_rates=(0.001)
+#training_propensity=(0.01 0.1 1 10 100)
 training_propensity=(1)
-lambda_interacts=(1 10 100)
-#lambda_interacts=(15 20 30 35 40 45 55 60 75 80 85 90 95)
-random_seeds=(1)
-#random_seeds=(1 2 3 4 5 6 7 8 9 10)
+#lambda_interacts=(1)
+lambda_interacts=(5 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95)
+#random_seeds=(1)
+random_seeds=(1 2 3 4 5 6 7 8 9 10)
 
 features_dimensions=(10)
 n_classes=(5)
