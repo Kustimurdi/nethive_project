@@ -1,6 +1,11 @@
 function create_arg_parse_settings(defaults::Dict{Symbol, Any} = DEFAULTS)
     s = ArgParseSettings()
     @add_arg_table s begin
+        "--args_file"
+        help = "Path to a parameter file containing flags"
+        arg_type = String
+        default = ""
+        nargs = 'A'
         "--parent_dataset_name"
         help = "Name of the folder housing the datasets"
         arg_type = String

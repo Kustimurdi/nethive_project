@@ -1,6 +1,6 @@
 const DEFAULTS = Dict(
     :parent_dataset_name => "default",
-    :task_type => :regression,
+    :task_type => :custom_classification,
     :queen_gene_method => :accuracy,
     :n_bees => UInt16(4),
     :n_epochs => UInt64(2000),

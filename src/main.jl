@@ -42,7 +42,14 @@ include("../src/simulation.jl")
 
 # -- Parse Args and Configure Simulation --
 s = create_arg_parse_settings(DEFAULTS)
-parsed_args = parse_args(s)
+parsed_args = parse_args_with_args_file(s)
+#parsed_args_tmp = parse_args(s)
+#if parsed_args_tmp["args_file"] != ""
+#  arg_lines = readlines(parsed_args_tmp["args_file"])
+#  push!(Base.ARGS, arg_lines...)
+#end
+#
+#parsed_args = parse_args(s)
 @show ARGS
 
 
