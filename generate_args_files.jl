@@ -35,9 +35,9 @@ function generate_all_args_files()
 
     learning_rates = [0.001]
     punish_rates = [0.001]
-    training_propensities = [0.01 0.1 1 10 100]
-    #lambda_interacts = 5:5:95
-    lambda_interacts = [5 10 15 20 25 30 35 40 45 55 60 65 70 75 80 85 90 95] # Original sweep
+    training_propensities = [0.001 0.01 0.1 1 10 20 30 40]
+    lambda_interacts = [130 135 140]
+    #lambda_interacts = [50.0]
     random_seeds = 1:10
 
     features_dimensions = [10]
@@ -100,9 +100,9 @@ function generate_missing_args_files_smart()
         "custom_classification_lambda_interact_sweep_rest", # Output directory name
         learning_rates = [0.001],
         punish_rates = [0.001], 
-        training_propensities = [1],
+        training_propensities = [20 30],
         lambda_interacts = lambda_interacts,
-        random_seeds = 1:5,
+        random_seeds = 1:10,
         features_dimensions = [10],
         n_classes = [5],
         n_per_class_train = [100],

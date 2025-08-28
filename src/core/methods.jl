@@ -54,7 +54,7 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
         initial_accuracy = calc_accuracy(bee.brain, testloader, task_type_struct, acc_sigma=h.config.accuracy_sigma)
         h.accuracy_history[bee.id, 1] = initial_accuracy
         bee.queen_gene = compute_queen_gene(bee, queen_gene_method_struct, testloader, task_type_struct, h.config.accuracy_sigma)
-        h.queen_genes_history[bee.id, 1] = bee.queen_gene
+        #h.queen_genes_history[bee.id, 1] = bee.queen_gene
     end
 
     if save_data && (h.config.save_nn_epochs>0)
@@ -123,8 +123,8 @@ function gillespie_simulation!(h::Hive, h_paths::HivePaths; save_data::Bool=true
                 sub_bee.queen_gene = new_queen_gene
 
                 push!(h.interaction_log[epoch], (sub_bee_id, dom_bee_id))
-                h.n_subdominant_history[sub_bee.id, epoch] += 1
-                h.n_dominant_history[dom_bee.id, epoch] +=1
+                #h.n_subdominant_history[sub_bee.id, epoch] += 1
+                #h.n_dominant_history[dom_bee.id, epoch] +=1
 
                 n_interact+=1
             end
@@ -191,10 +191,10 @@ function save_results(raw_path::String, h::Hive)
     data_fields = Dict(
         "accuracy" => h.accuracy_history,
         "loss" => h.loss_history,
-        "queen_gene" => h.queen_genes_history,
         "train_count" => h.n_train_history,
-        "subdominant_count" => h.n_subdominant_history,
-        "dominant_count" => h.n_dominant_history,
+        #"queen_gene" => h.queen_genes_history,
+        #"subdominant_count" => h.n_subdominant_history,
+        #"dominant_count" => h.n_dominant_history,
         "subdominant_rates" => h.subdominant_rate_history,
         "dominant_rates" => h.dominant_rate_history
     )
